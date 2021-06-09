@@ -6,7 +6,7 @@ Documentation for building and installing the library can be found [here](docs/B
 
 ## Windows Requirements
 
-The CP210x USB to UART Bridge connector needs a specific driver installed. You can find the latest driver [here](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers).
+The CP210x USB to UART Bridge connector needs a specific driver installed to be used on Windows. You can find the latest driver [here](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers).
 
 ## Test Apps
 
