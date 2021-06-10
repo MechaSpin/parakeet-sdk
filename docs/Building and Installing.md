@@ -11,8 +11,9 @@ git clone https://github.com/MechaSpin/parakeet-sdk
 
 #### 3. Install [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/)
 #### 4. Install [CMake](https://cmake.org/download/)
-#### 5. Create a folder inside {PARAKEET_ROOT} called "build"
-#### 6. Open CMake GUI
+#### 5. Install the [UART to USB Driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers).
+#### 6. Create a folder inside {PARAKEET_ROOT} called "build"
+#### 7. Open CMake GUI
 - Click browse source
 - Select {PARAKEET_ROOT}
 - Click browse build
@@ -24,13 +25,13 @@ git clone https://github.com/MechaSpin/parakeet-sdk
 - Click Configure
 - Once configuration completes, click Generate
 
-#### 7. Building with Visual Studio
+#### 8. Building with Visual Studio
 - Once CMake generation completes, open Visual Studio as administrator (required for installing to Program Files)
 - Open Parakeet.sln which was created by CMake in the previously made build folder
 - In the solution explorer, select the Parakeet project
 - Right click the project, and select build
 
-#### 8. Installing with Visual Studio
+#### 9. Installing with Visual Studio
 - In the solution explorer, select the INSTALL project
 - Right click the project, and select build
 - Note: this will install the project to: 
