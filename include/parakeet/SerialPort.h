@@ -9,9 +9,9 @@
 
 #include "BaudRate.h"
 
-#ifdef WIN32
+#if defined(_WIN32)
     #include <windows.h>
-#elif __linux__
+#elif defined(__linux) || defined(linux) || defined(__linux__)
     #include <fcntl.h>
     #include <errno.h>
     #include <termios.h>
@@ -57,9 +57,9 @@ class SerialPort
         bool isConnected() const;
 
 	private:
-        #ifdef WIN32
+        #if defined(_WIN32)
             HANDLE hPort = 0;
-        #elif __linux
+        #elif defined(__linux) || defined(linux) || defined(__linux__)
             int hPort = 0;
         #endif
         std::string lastUsedPort;

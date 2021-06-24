@@ -4,7 +4,7 @@
 
 #pragma once
 
-#ifdef __linux__
+#if defined(__linux) || defined(linux) || defined(__linux__)
 class SerialPortHelper
 {
     public:

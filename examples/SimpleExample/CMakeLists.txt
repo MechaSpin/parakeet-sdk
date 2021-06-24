@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required (VERSION 3.10)
 project(SimpleExample VERSION 1.0.0)
 
 find_package(Parakeet REQUIRED)

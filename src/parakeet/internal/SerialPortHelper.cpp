@@ -4,7 +4,7 @@
 
 #include <parakeet/internal/SerialPortHelper.h>
 
-#ifdef __linux__
+#if defined(__linux) || defined(linux) || defined(__linux__)
 namespace ioctl
 {
     #include <sys/ioctl.h>

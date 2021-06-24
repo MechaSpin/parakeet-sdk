@@ -22,7 +22,7 @@ namespace parakeet
             return;
         }
 
-        #if defined(WIN32)
+        #if defined(_WIN32)
             CloseHandle(hPort);
         #elif defined(__linux) || defined(linux) || defined(__linux__)
             ::close(hPort);
@@ -35,7 +35,7 @@ namespace parakeet
     {
         if (isConnected())
         {
-        #if defined(WIN32)
+        #if defined(_WIN32)
             DWORD dw;
             WriteFile(hPort, message.c_str(), static_cast<DWORD>(message.length()), &dw, NULL);
         #elif defined(__linux) || defined(linux) || defined(__linux__)
@@ -63,7 +63,7 @@ namespace parakeet
         }
     }
 
-#if defined(WIN32)
+#if defined(_WIN32)
     bool SerialPort::open(const char* name, const BaudRate& speed)
     {
         // Open the serial port.
