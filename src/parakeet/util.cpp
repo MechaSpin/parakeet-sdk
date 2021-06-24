@@ -21,8 +21,8 @@ namespace parakeet
 
     PointXY util::transform(const PointPolar& polarPoint)
     {
-        double x = polarPoint.getRange() * cos(degreesToRadians(polarPoint.getAngleInDegrees()));
-        double y = polarPoint.getRange() * sin(degreesToRadians(polarPoint.getAngleInDegrees()));
+        double x = polarPoint.getRange_mm() * cos(degreesToRadians(polarPoint.getAngle_deg()));
+        double y = polarPoint.getRange_mm() * sin(degreesToRadians(polarPoint.getAngle_deg()));
 
         return PointXY(x, y, polarPoint.getIntensity());
     }

@@ -8,21 +8,31 @@ namespace mechaspin
 {
 namespace parakeet
 {
-    PointXY::PointXY(double x, double y, std::uint16_t intensity)
+    PointXY::PointXY(double x_mm, double y_mm, std::uint16_t intensity)
     {
-        this->x = x;
-        this->y = y;
+        this->x_mm = x_mm;
+        this->y_mm = y_mm;
         this->intensity = intensity;
     }
 
     double PointXY::getX() const
     {
-        return x;
+        return getX_mm();
     }
 
     double PointXY::getY() const
     {
-        return y;
+        return getY_mm();
+    }
+
+    double PointXY::getX_mm() const
+    {
+        return x_mm;
+    }
+
+    double PointXY::getY_mm() const
+    {
+        return y_mm;
     }
 
     std::uint16_t PointXY::getIntensity() const

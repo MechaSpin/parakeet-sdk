@@ -34,7 +34,7 @@ class Driver
         /// \brief A deconstructor responsible for shutting down a existing serial port connection
         ~Driver();
 
-        /// \brief Start the Driver's processing thread
+        /// \brief Attempt connection to a Parakeet sensor through a serial port
         /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
         /// \param[in] baudRate - The baud rate the sensor is currently set to. Using BaudRates::Auto will try to automatically determine the baud rate.
         /// \param[in] intensity - Should the sensor return intensity data

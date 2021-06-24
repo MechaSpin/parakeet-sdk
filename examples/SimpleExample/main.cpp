@@ -29,12 +29,12 @@ void onScanComplete(const mechaspin::parakeet::ScanDataPolar& scanData)
 
     for (size_t i = 0; i < pointList.size(); i++)
     {
-        if (minPoint == nullptr || pointList[i].getRange() < minPoint->getRange())
+        if (minPoint == nullptr || pointList[i].getRange_mm() < minPoint->getRange_mm())
         {
             minPoint = std::make_shared<mechaspin::parakeet::PointPolar>(pointList[i]);
         }
 
-        if (maxPoint == nullptr || pointList[i].getRange() > maxPoint->getRange())
+        if (maxPoint == nullptr || pointList[i].getRange_mm() > maxPoint->getRange_mm())
         {
             maxPoint = std::make_shared<mechaspin::parakeet::PointPolar>(pointList[i]);
         }
@@ -115,8 +115,8 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            std::cout << "Min point: (" << minPoint->getRange() << ", " << minPoint->getAngleInDegrees() << ") Intensity: " << minPoint->getIntensity() << std::endl;
-            std::cout << "Max point: (" << maxPoint->getRange() << ", " << maxPoint->getAngleInDegrees() << ") Intensity: " << maxPoint->getIntensity() << std::endl;
+            std::cout << "Min point: (" << minPoint->getRange_mm() << ", " << minPoint->getAngle_deg() << ") Intensity: " << minPoint->getIntensity() << std::endl;
+            std::cout << "Max point: (" << maxPoint->getRange_mm() << ", " << maxPoint->getAngle_deg() << ") Intensity: " << maxPoint->getIntensity() << std::endl;
 
             std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count() << "ms ago." << std::endl;
 
@@ -133,8 +133,8 @@ int main(int argc, char* argv[])
             mechaspin::parakeet::PointXY minPointXY = mechaspin::parakeet::util::transform(*minPoint);
             mechaspin::parakeet::PointXY maxPointXY = mechaspin::parakeet::util::transform(*maxPoint);
 
-            std::cout << "Min point: (" << minPointXY.getX() << ", " << minPointXY.getY() << ") Intensity: " << minPointXY.getIntensity() << std::endl;
-            std::cout << "Max point: (" << maxPointXY.getX() << ", " << maxPointXY.getY() << ") Intensity: " << maxPointXY.getIntensity() << std::endl;
+            std::cout << "Min point: (" << minPointXY.getX_mm() << ", " << minPointXY.getY_mm() << ") Intensity: " << minPointXY.getIntensity() << std::endl;
+            std::cout << "Max point: (" << maxPointXY.getX_mm() << ", " << maxPointXY.getY_mm() << ") Intensity: " << maxPointXY.getIntensity() << std::endl;
 
             std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count() << "ms ago." << std::endl;
 

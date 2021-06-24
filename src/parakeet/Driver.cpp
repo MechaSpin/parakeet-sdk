@@ -56,6 +56,11 @@ namespace parakeet
             return false;
         }
 
+        g_withIntensity = intensity;
+        g_scanningFrequency_Hz = scanningFrequency_Hz;
+        g_withDataSmoothing = dataSmoothing;
+        g_withDragPointRemoval = dragPointRemoval;
+
         if(baudRate == BaudRates::Auto)
         {
             return autoFindBaudRate(comPort, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
@@ -73,10 +78,6 @@ namespace parakeet
         serialPort.write(CW_STOP_ROTATING);
 
         g_baudRate = baudRate;
-        g_withIntensity = intensity;
-        g_scanningFrequency_Hz = scanningFrequency_Hz;
-        g_withDataSmoothing = dataSmoothing;
-        g_withDragPointRemoval = dragPointRemoval;
 
         return true;
     }
