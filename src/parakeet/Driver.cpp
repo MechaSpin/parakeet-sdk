@@ -338,7 +338,62 @@ namespace parakeet
 
     void Driver::OnMsg(CommandData* msg)
     {
-        if (msg->body[0] == 'S' && msg->body[1] == 'T' && msg->body[6] == 'E' && msg->body[7] == 'D')
+        std::string stringForm(reinterpret_cast<char*>(msg->body), msg->len);
+
+        if (stringForm.rfind("LiDAR STOP") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::STOP] = true;
+        }
+
+        if (stringForm.rfind("LiDAR START") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::START] = true;
+        }
+
+        if (stringForm.rfind("Error: OK") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::BAUDRATE] = true;
+        }
+
+        if (stringForm.rfind("LiDAR CONFID") != std::string::npos || stringForm.rfind("LiDAR NO CONFID") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::INTENSITY] = true;
+        }
+
+        if (stringForm.rfind("LiDAR set smooth ok") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::DATASMOOTHING] = true;
+        }
+
+        if (stringForm.rfind("LiDAR set filter ok") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::DRAGPOINTREMOVAL] = true;
+        }
+
+        if (stringForm.rfind("Set RPM: OK") != std::string::npos)
+        {
+            sensorMessages[LidarReturnMessage::SPEED] = true;
+        }
+
+        delete msg;
+    }
+
+    void Driver::OnData(ScanData* data)
+    {
+        double startAngle_deg = data->from / 10.0;
+        double endAngle_deg = (static_cast<double>(data->from) + static_cast<double>(data->span)) / 10.0;
+        double anglePerPoint_deg = (endAngle_deg - startAngle_deg) / data->count;
+        double deviationFrom360_deg = 1;
+
+        //Create PointPolar for each data point
+        for(int i = 0; i < data->count; i++)
+        {
+            PointPolar p(data->dist[i], startAngle_deg + (anglePerPoint_deg * i), data->intensity[i]);
+
+            pointHoldingList.push_back(p);
+        }
+
+        if(endAngle_deg + deviationFrom360_deg >= 360)
         {
             interfaceThreadFrameCount++;
 
@@ -350,62 +405,6 @@ namespace parakeet
             }
 
             pointHoldingList.clear();
-        }
-        else
-        {
-            std::string stringForm(reinterpret_cast<char*>(msg->body), msg->len);
-
-            if (stringForm.rfind("LiDAR STOP") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::STOP] = true;
-            }
-
-            if (stringForm.rfind("LiDAR START") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::START] = true;
-            }
-
-            if (stringForm.rfind("Error: OK") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::BAUDRATE] = true;
-            }
-
-            if (stringForm.rfind("LiDAR CONFID") != std::string::npos || stringForm.rfind("LiDAR NO CONFID") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::INTENSITY] = true;
-            }
-
-            if (stringForm.rfind("LiDAR set smooth ok") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::DATASMOOTHING] = true;
-            }
-
-            if (stringForm.rfind("LiDAR set filter ok") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::DRAGPOINTREMOVAL] = true;
-            }
-
-            if (stringForm.rfind("Set RPM: OK") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::SPEED] = true;
-            }
-        }
-
-        delete msg;
-    }
-
-    void Driver::OnData(ScanData* data)
-    {
-        double startAngle = data->from / 10.0;
-        double endAngle = (static_cast<double>(data->from) + static_cast<double>(data->span)) / 10.0;
-        double anglePerPoint = (endAngle - startAngle) / data->count;
-
-        //Create PointPolar for each data point
-        for(int i = 0; i < data->count; i++)
-        {
-            PointPolar p(data->dist[i], startAngle + (anglePerPoint * i), data->intensity[i]);
-
-            pointHoldingList.push_back(p);
         }
 
         delete data;
