@@ -18,15 +18,14 @@ class ScanDataPolar
     public:
         /// \brief Create a ScanDataPolar which is responsible for holding on to a list of PointPolars
         /// \param[in] pointPolarList - A vector containing PointPolar(s)
-        /// \returns A ScanDataPolar object which holds the information given through the param, and generates a timestamp.
-        ScanDataPolar(const std::vector<PointPolar>& pointPolarList);
+        /// \param[in] timestamp - A time point which holds the time the first point was received
+        /// \returns A ScanDataPolar object which holds a vector of PointPolar(s) and a timestamp
+        ScanDataPolar(const std::vector<PointPolar>& pointPolarList, const std::chrono::time_point<std::chrono::system_clock>& timestamp);
         
         /// \brief Returns the vector of points this object is holding onto
-        /// \returns Vector of points this object is holding onto
         const std::vector<PointPolar>& getPoints() const;
         
-        /// \brief Returns the timestamp of this objects creation
-        /// \returns Timestamp of this objects creation
+        /// \brief Returns the timestamp which signals when the first point was received
         const std::chrono::time_point<std::chrono::system_clock>& getTimestamp() const;
 
     private:

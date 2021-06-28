@@ -16,7 +16,7 @@ namespace parakeet
         {
             pointXYvector.push_back(transform(point));
         }
-        return ScanDataXY(pointXYvector);
+        return ScanDataXY(pointXYvector, polarScanData.getTimestamp());
     }
 
     PointXY util::transform(const PointPolar& polarPoint)

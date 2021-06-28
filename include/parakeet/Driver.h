@@ -141,6 +141,7 @@ class Driver
         std::chrono::milliseconds interfaceThreadStartTime;
         int interfaceThreadFrameCount = 0;
 
+        std::chrono::time_point<std::chrono::system_clock> timeOfFirstPoint;
         std::vector<PointPolar> pointHoldingList;
         std::function<void(const ScanDataPolar&)> scanCallbackFunction = nullptr;
 
