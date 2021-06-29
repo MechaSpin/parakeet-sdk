@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2021-06-28
+## [2.0.0] - In-Development
 ### Modified
 - Changed Driver code to start a ScanData set at 0 degrees, rather than 36-72 degrees
+- Changed ScanDataPolar / ScanDataXY to require a timestamp on creation, which signifys when the first point was created
 
 ## [1.1.0] - 2021-06-21
 ### Added

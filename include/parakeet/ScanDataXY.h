@@ -18,15 +18,14 @@ class ScanDataXY
     public:
         /// \brief Create a ScanDataXY which is responsible for holding on to a list of PointXYs
         /// \param[in] pointPolarList - A vector containing PointXY(s)
-        /// \returns A ScanDataXY object which holds the information given through the param, and generates a timestamp.
-        ScanDataXY(const std::vector<PointXY>& pointXYList);
+        /// \param[in] timestamp - A time point which holds the time the first point was received
+        /// \returns A ScanDataXY object which holds a vector of PointXY(s) and a timestamp
+        ScanDataXY(const std::vector<PointXY>& pointXYList, const std::chrono::time_point<std::chrono::system_clock>& timestamp);
         
         /// \brief Returns the vector of points this object is holding onto
-        /// \returns Vector of points this object is holding onto
         const std::vector<PointXY>& getPoints() const;
         
-        /// \brief Returns the timestamp of this objects creation
-        /// \returns Timestamp of this objects creation
+        /// \brief Returns the timestamp which signals when the first point was received
         const std::chrono::time_point<std::chrono::system_clock>& getTimestamp() const;
 
     private:

@@ -8,9 +8,9 @@ namespace mechaspin
 {
 namespace parakeet
 {
-    ScanDataPolar::ScanDataPolar(const std::vector<PointPolar>& pointPolarList)
+    ScanDataPolar::ScanDataPolar(const std::vector<PointPolar>& pointPolarList, const std::chrono::time_point<std::chrono::system_clock>& timestamp)
     {
-        timestamp = std::chrono::system_clock::now();
+        this->timestamp = timestamp;
         points_mm = pointPolarList;
     }
 

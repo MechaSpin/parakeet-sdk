@@ -380,6 +380,11 @@ namespace parakeet
 
     void Driver::OnData(ScanData* data)
     {
+        if(pointHoldingList.size() == 0)
+        {
+            timeOfFirstPoint = std::chrono::system_clock::now();
+        }
+
         double startAngle_deg = data->from / 10.0;
         double endAngle_deg = (static_cast<double>(data->from) + static_cast<double>(data->span)) / 10.0;
         double anglePerPoint_deg = (endAngle_deg - startAngle_deg) / data->count;
@@ -388,20 +393,20 @@ namespace parakeet
         //Create PointPolar for each data point
         for(int i = 0; i < data->count; i++)
         {
-            PointPolar p(data->dist[i], startAngle_deg + (anglePerPoint_deg * i), data->intensity[i]);
+            PointPolar pointPolar(data->dist[i], startAngle_deg + (anglePerPoint_deg * i), data->intensity[i]);
 
-            pointHoldingList.push_back(p);
+            pointHoldingList.push_back(pointPolar);
         }
 
         if(endAngle_deg + deviationFrom360_deg >= 360)
         {
             interfaceThreadFrameCount++;
 
-            ScanDataPolar sdp(pointHoldingList);
+            ScanDataPolar scanDataPolar(pointHoldingList, timeOfFirstPoint);
 
             if (scanCallbackFunction != nullptr)
             {
-                scanCallbackFunction(sdp);
+                scanCallbackFunction(scanDataPolar);
             }
 
             pointHoldingList.clear();
