@@ -1,12 +1,14 @@
 # Parakeet-SDK
 
-Driver library for the Parakeet Pro LiDAR Sensor.
+Driver library for the Parakeet Pro LiDAR sensor.
 
 Documentation for building and installing the library can be found [here](docs/Building%20and%20Installing.md).
 
-## Windows Requirements
+## Additional information
 
 The CP210x USB to UART Bridge connector needs a specific driver installed to be used on Windows. You can find the latest driver [here](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers).
+
+The Parakeet-Pro LiDAR sensor has its starting angle of 0 in the center of the device, on the opposite side of the serial port. The device spins clockwise.
 
 ## Test Apps
 

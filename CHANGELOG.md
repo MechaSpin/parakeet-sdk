@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.0] - In-Development
+### Added
+- Added sensor starting angle and spin rotation to the documentation
 ### Modified
 - Changed Driver code to start a ScanData set at 0 degrees, rather than 36-72 degrees
 - Changed ScanDataPolar / ScanDataXY to require a timestamp on creation, which signifys when the first point was created
