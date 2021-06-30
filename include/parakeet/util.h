@@ -30,6 +30,16 @@ class util
         /// \returns A PointXY object which holds the same position as the PointPolar param
         static PointXY transform(const PointPolar& polarPoint);
 
+        /// \brief Translates a ScanDataXY into a ScanDataPolar
+        /// \param[in] polarScanData - A ScanDataXY object containing a list of PointXYs to be converted
+        /// \returns A ScanDataPolar object containing a list of PointXY's which were obtained by converting the PointXYs from the param
+        static ScanDataPolar transform(const ScanDataXY& polarScanData);
+
+        /// \brief Translates a PointXY into a PointPolar
+        /// \param[in] polarPoint - A PointXY object to be converted
+        /// \returns A PointPolar object which holds the same position as the PointXY param
+        static PointPolar transform(const PointXY& polarPoint);
+
         template <typename T>
         static T degreesToRadians(T degrees)
         {
@@ -40,6 +50,13 @@ class util
         static T radiansToDegrees(T radians)
         {
             return radians * 180 / M_PI;
+        }
+
+    private:
+        template <typename T>
+        static T radiansToDegrees0To360(T radians)
+        {
+            return (radiansToDegrees(radians)) + (radians > 0 ? 0 : 360);
         }
 };
 }
