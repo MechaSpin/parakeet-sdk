@@ -25,16 +25,6 @@ namespace parakeet
         return getY_mm();
     }
 
-    double PointXY::getX_mm() const
-    {
-        return x_mm;
-    }
-
-    double PointXY::getY_mm() const
-    {
-        return y_mm;
-    }
-
     std::uint16_t PointXY::getIntensity() const
     {
         return intensity;

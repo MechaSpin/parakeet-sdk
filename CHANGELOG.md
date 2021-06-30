@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed Driver code to start a ScanData set at 0 degrees, rather than 36-72 degrees
 - Changed ScanDataPolar / ScanDataXY to require a timestamp on creation, which signifys when the first point was created
 - Modified SimpleExample CMake to find the latest version of parakeet-sdk which can be found
+### Removed
+- Removed deprecated functions getRange, and getAngleInDegrees from PointPolar
+- Removed deprecated functions getX, and getY from PointXY
 
 ## [1.1.0] - 2021-06-21
 ### Added
