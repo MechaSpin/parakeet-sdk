@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed Windows and Linux if defines to be more consistent
 - Modified SimpleExample CMake to find the latest version of parakeet-sdk which can be found
 - Properly labeled units of measure on variables
+- Updated copyright action to call the action from inside the parakeet-devtools repo
 
 ## [1.0.1] - 2021-06-09
 ### Modified
