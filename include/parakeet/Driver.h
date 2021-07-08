@@ -2,11 +2,14 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_DRIVER_H
+#define PARAKEET_DRIVER_H
 
 #include "BaudRate.h"
+#include "macros.h"
 #include "ScanDataPolar.h"
 #include "SerialPort.h"
+#include "internal/SensorResponseParser.h"
 
 #include <thread>
 #include <iostream>
@@ -27,12 +30,44 @@ class Driver
         {
             Frequency_7Hz = 7,
             Frequency_10Hz = 10,
-            Frequency_15Hz = 15,
-            NOT_INITIALIZED = -1
+            Frequency_15Hz = 15
+        };
+
+        struct SensorConfiguration
+        {
+            SensorConfiguration() = default;
+
+            /// \brief Create a SensorConfiguration object with the following settings
+            /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
+            /// \param[in] baudRate - The baud rate the sensor is currently set to. Using BaudRates::Auto will try to automatically determine the baud rate.
+            /// \param[in] intensity - Should the sensor return intensity data
+            /// \param[in] scanningFrequency_Hz - The speed which the sensor should be spinning at
+            /// \param[in] dataSmoothing - Should data smoothing be enabled
+            /// \param[in] dragPointRemoval - Should drag point removal be enabled
+            SensorConfiguration(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
+            {
+                this->comPort = comPort;
+                this->baudRate = baudRate;
+                this->intensity = intensity;
+                this->scanningFrequency_Hz = scanningFrequency_Hz;
+                this->dataSmoothing = dataSmoothing;
+                this->dragPointRemoval = dragPointRemoval;
+            }
+
+            std::string comPort;
+            BaudRate baudRate = BaudRates::Auto;
+            ScanningFrequency scanningFrequency_Hz;
+            bool intensity;
+            bool dataSmoothing;
+            bool dragPointRemoval;
         };
 
         /// \brief A deconstructor responsible for shutting down a existing serial port connection
         ~Driver();
+
+        /// \brief Attempt connection to a Parakeet sensor through a serial port
+        /// \param[in] sensorConfiguration - Sensor settings and serial port information
+        void connect(const SensorConfiguration& sensorConfiguration);
 
         /// \brief Attempt connection to a Parakeet sensor through a serial port
         /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
@@ -42,7 +77,7 @@ class Driver
         /// \param[in] dataSmoothing - Should data smoothing be enabled
         /// \param[in] dragPointRemoval - Should drag point removal be enabled
         /// \returns True if connection was successful, false otherwise
-        bool connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval);
+        PARAKEET_DEPRECATED(bool connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval));
 
         /// \brief Start the Driver's processing thread
         void start();
@@ -102,90 +137,38 @@ class Driver
         BaudRate getBaudRate();
 
     private:
-        struct ScanData
-        {
-            unsigned short from;
-            unsigned short span;
-            unsigned short count;
-            unsigned short reserved;
-            unsigned short dist[1000];
-            unsigned char intensity[1000];
-        };
+        struct ScanData;
+        struct MessageData;
 
-        struct CommandData
-        {
-            int len;
-            unsigned char body[8 * 1024];
-        };
+        void onScanDataReceived(ScanData* scanData);
+        void onMessageDataReceived(MessageData* messageData);
+        int parseSensorDataFromBuffer(int length, unsigned char* buf);
 
-        void OnData(ScanData* data);
-        void OnMsg(CommandData* msg);
-        int Parse(int nl, unsigned char* buf);
+        void open();
+        void autoFindBaudRate();
+        void serialInterfaceThreadFunction();
+        bool sendMessageWaitForResponseOrTimeout(internal::SensorResponse::MessageType messageType, const std::string& message, std::chrono::milliseconds timeout);
+
+        void throwExceptionIfNotConnected();
 
         bool isAutoConnecting;
+        SensorConfiguration sensorConfiguration;
 
-        bool g_withIntensity;
-        bool g_withDataSmoothing;
-        bool g_withDragPointRemoval;
-        ScanningFrequency g_scanningFrequency_Hz;
-        BaudRate g_baudRate = BaudRates::Auto;
-
-        bool autoFindBaudRate(const std::string& comPort, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval);
-
-        std::thread serialInterfaceThread;
-        bool runSerialInterfaceThread;
-        void serialInterfaceThreadFunction();
-
+        bool sensorReturnMessageState[internal::SensorResponse::MessageType::NA - 1];
+        
         SerialPort serialPort;
+        internal::SensorResponseParser sensorResponseParser;
 
         std::chrono::milliseconds interfaceThreadStartTime;
         int interfaceThreadFrameCount = 0;
+        std::thread serialInterfaceThread;
+        bool runSerialInterfaceThread;
 
         std::chrono::time_point<std::chrono::system_clock> timeOfFirstPoint;
         std::vector<PointPolar> pointHoldingList;
         std::function<void(const ScanDataPolar&)> scanCallbackFunction = nullptr;
-
-        static const std::string CW_STOP_ROTATING;
-        static const std::string CW_START_NORMALLY;
-        static const std::string CW_STOP_ROTATING_FIX_DIST;
-        static const std::string CW_RESET_AND_RESTART;
-        static const std::string CW_VERSION_NUMBER;
-
-        static const std::string CW_ENABLE_DATA_SMOOTHING;
-        static const std::string CW_DISABLE_DATA_SMOOTHING;
-        static const std::string CW_ENABLE_DRAG_POINT_REMOVAL;
-        static const std::string CW_DISABLE_DRAG_POINT_REMOVAL;
-
-        static const std::string SW_START_WITH_INTENSITY;
-        static const std::string SW_START_WITHOUT_INTENSITY;
-
-        static const std::string SW_SET_SPEED_PREFIX;
-        static const std::string SW_SET_SPEED_POSTFIX;
-        static const std::string SW_SET_SPEED(int speed);
-
-        static const std::string SW_SET_BIAS_PREFIX;
-        static const std::string SW_SET_BIAS_POSTFIX;
-        static const std::string SW_SET_BIAS(int bias);
-
-        static const std::string SW_SET_BAUD_RATE_PREFIX;
-        static const std::string SW_SET_BAUD_RATE_POSTFIX;
-        static const std::string SW_SET_BAUD_RATE(int baudRate);
-
-        enum LidarReturnMessage
-        {
-            STOP,
-            START,
-            INTENSITY,
-            SPEED,
-            BAUDRATE,
-            DATASMOOTHING,
-            DRAGPOINTREMOVAL,
-            MAX
-        };
-
-        bool sensorMessages[LidarReturnMessage::MAX - 1];
-
-        bool waitForMessage(Driver::LidarReturnMessage messageType, const std::string& message, std::chrono::milliseconds timeout);
 };
 }
 }
+
+#endif

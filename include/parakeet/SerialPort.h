@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_SERIALPORT_H
+#define PARAKEET_SERIALPORT_H
 
 #include <string>
 #include <iostream>
@@ -40,17 +41,16 @@ class SerialPort
 
         /// \brief Opens a connection to the serial port to be read from and written to
         /// \param[in] name - The OS level name for the serial port (COM3 | /dev/ttyUSB0)
-        /// \param[in] speed - The baud rate the serial port should be opened with
+        /// \param[in] baudRate - The baud rate the serial port should be opened with
         /// \returns The success state of the open operation
-        bool open(const char* name, const BaudRate& speed);
+        bool open(const char* name, const BaudRate& baudRate);
 
         /// \brief Closes the serial port connection if open
         void close();
 
-
         /// \brief Closes from an existing serial port connection, and re-opens it under a new baud rate
-        /// \param[in] speed - The new baud rate value to be used
-        void changeBaudRate(const BaudRate& speed);
+        /// \param[in] baudRate - The new baud rate value to be used
+        void changeBaudRate(const BaudRate& baudRate);
 
         /// \brief Check if the serial port is connected
         /// \returns A boolean containing the connection state
@@ -66,3 +66,5 @@ class SerialPort
 };
 }
 }
+
+#endif
