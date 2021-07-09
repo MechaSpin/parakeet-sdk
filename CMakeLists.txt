@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.5)
 project(Parakeet VERSION 2.0.0)
 
 set (PROJECT_VERSION_STRING ${PROJECT_NAME}-${PROJECT_VERSION})
