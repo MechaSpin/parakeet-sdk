@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_SCANDATAPOLAR_H
+#define PARAKEET_SCANDATAPOLAR_H
 
 #include "PointPolar.h"
 
@@ -17,10 +18,10 @@ class ScanDataPolar
 {
     public:
         /// \brief Create a ScanDataPolar which is responsible for holding on to a list of PointPolars
-        /// \param[in] pointPolarList - A vector containing PointPolar(s)
-        /// \param[in] timestamp - A time point which holds the time the first point was received
+        /// \param[in] vectorOfPolarPoints - A vector containing PointPolar(s)
+        /// \param[in] timestampOfFirstPoint - A time point which holds the time the first point was received
         /// \returns A ScanDataPolar object which holds a vector of PointPolar(s) and a timestamp
-        ScanDataPolar(const std::vector<PointPolar>& pointPolarList, const std::chrono::time_point<std::chrono::system_clock>& timestamp);
+        ScanDataPolar(const std::vector<PointPolar>& vectorOfPolarPoints, const std::chrono::time_point<std::chrono::system_clock>& timestampOfFirstPoint);
         
         /// \brief Returns the vector of points this object is holding onto
         const std::vector<PointPolar>& getPoints() const;
@@ -29,8 +30,10 @@ class ScanDataPolar
         const std::chrono::time_point<std::chrono::system_clock>& getTimestamp() const;
 
     private:
-        std::vector<PointPolar> points_mm;
-        std::chrono::time_point<std::chrono::system_clock> timestamp;
+        std::vector<PointPolar> vectorOfPolarPoints;
+        std::chrono::time_point<std::chrono::system_clock> timestampOfFirstPoint;
 };
 }
 }
+
+#endif

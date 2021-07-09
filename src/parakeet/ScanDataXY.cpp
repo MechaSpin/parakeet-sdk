@@ -8,20 +8,20 @@ namespace mechaspin
 {
 namespace parakeet
 {
-    ScanDataXY::ScanDataXY(const std::vector<PointXY>& pointXYList, const std::chrono::time_point<std::chrono::system_clock>& timestamp)
+    ScanDataXY::ScanDataXY(const std::vector<PointXY>& pointXYList, const std::chrono::time_point<std::chrono::system_clock>& timestampOfFirstPoint)
     {
-        this->timestamp = timestamp;
-        points_mm = pointXYList;
+        this->timestampOfFirstPoint = timestampOfFirstPoint;
+        this->vectorOfCartesianPoints = pointXYList;
     }
 
     const std::chrono::time_point<std::chrono::system_clock>& ScanDataXY::getTimestamp() const
     {
-        return timestamp;
+        return timestampOfFirstPoint;
     }
 
     const std::vector<PointXY>& ScanDataXY::getPoints() const
     {
-        return points_mm;
+        return vectorOfCartesianPoints;
     }
 }
 }
