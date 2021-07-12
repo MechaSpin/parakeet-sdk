@@ -2,7 +2,6 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
 #include <parakeet/internal/SensorResponseParser.h>
 
 namespace mechaspin
