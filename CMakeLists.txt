@@ -47,9 +47,8 @@ include(GNUInstallDirs)
 
 find_package(Threads REQUIRED)
 
-add_library (${PROJECT_NAME}
-	${PARAKEET_SOURCE} ${PARAKEET_HEADER}
-)
+add_library(${PROJECT_NAME} ${PARAKEET_SOURCE} ${PARAKEET_HEADER})
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 if(WIN32)
 	set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
