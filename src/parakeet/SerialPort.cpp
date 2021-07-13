@@ -22,7 +22,7 @@ namespace parakeet
             return;
         }
 
-        #if defined(WIN32)
+        #if defined(_WIN32)
             CloseHandle(hPort);
         #elif defined(__linux) || defined(linux) || defined(__linux__)
             ::close(hPort);
@@ -35,7 +35,7 @@ namespace parakeet
     {
         if (isConnected())
         {
-        #if defined(WIN32)
+        #if defined(_WIN32)
             DWORD dw;
             WriteFile(hPort, message.c_str(), static_cast<DWORD>(message.length()), &dw, NULL);
         #elif defined(__linux) || defined(linux) || defined(__linux__)
@@ -63,7 +63,7 @@ namespace parakeet
         }
     }
 
-#if defined(WIN32)
+#if defined(_WIN32)
     bool SerialPort::open(const char* name, const BaudRate& speed)
     {
         // Open the serial port.
@@ -78,6 +78,7 @@ namespace parakeet
         if (hPort == NULL || hPort == INVALID_HANDLE_VALUE)
         {
             //MessageBox(0, "can not open port", name, MB_OK);
+            hPort = 0;
             return false;
         }
         DCB PortDCB;
@@ -113,6 +114,7 @@ namespace parakeet
         if (!SetCommState(hPort, &PortDCB))
         {
             //MessageBox(0, "Unable to configure the serial port", "error", MB_OK);
+            hPort = 0;
             CloseHandle(hPort);
             return false;
         }
@@ -134,6 +136,7 @@ namespace parakeet
         {
             // Could not set the timeout parameters.
             //MessageBox(0, "Unable to set the timeout parameters", "error", MB_OK);
+            hPort = 0;
             CloseHandle(hPort);
             return false;
         }
@@ -191,7 +194,7 @@ namespace parakeet
             return false;
         }
 
-        SerialPortHelper::setCustomBaudRate(hPort, speed.getValue());
+        internal::SerialPortHelper::setCustomBaudRate(hPort, speed.getValue());
 
         lastUsedPort = std::string(name);
 

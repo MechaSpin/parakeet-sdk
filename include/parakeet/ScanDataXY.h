@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_SCANDATAXY_H
+#define PARAKEET_SCANDATAXY_H
 
 #include "PointXY.h"
 
@@ -17,21 +18,22 @@ class ScanDataXY
 {
     public:
         /// \brief Create a ScanDataXY which is responsible for holding on to a list of PointXYs
-        /// \param[in] pointPolarList - A vector containing PointXY(s)
-        /// \returns A ScanDataXY object which holds the information given through the param, and generates a timestamp.
-        ScanDataXY(const std::vector<PointXY>& pointXYList);
+        /// \param[in] vectorOfCartesianPoints - A vector containing PointXY(s)
+        /// \param[in] timestampOfFirstPoint - A time point which holds the time the first point was received
+        /// \returns A ScanDataXY object which holds a vector of PointXY(s) and a timestamp
+        ScanDataXY(const std::vector<PointXY>& vectorOfCartesianPoints, const std::chrono::time_point<std::chrono::system_clock>& timestampOfFirstPoint);
         
         /// \brief Returns the vector of points this object is holding onto
-        /// \returns Vector of points this object is holding onto
         const std::vector<PointXY>& getPoints() const;
         
-        /// \brief Returns the timestamp of this objects creation
-        /// \returns Timestamp of this objects creation
+        /// \brief Returns the timestamp which signals when the first point was received
         const std::chrono::time_point<std::chrono::system_clock>& getTimestamp() const;
 
     private:
-        std::vector<PointXY> points_mm;
-        std::chrono::time_point<std::chrono::system_clock> timestamp;
+        std::vector<PointXY> vectorOfCartesianPoints;
+        std::chrono::time_point<std::chrono::system_clock> timestampOfFirstPoint;
 };
 }
 }
+
+#endif

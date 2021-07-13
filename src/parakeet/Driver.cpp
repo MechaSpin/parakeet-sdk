@@ -4,134 +4,160 @@
 
 #include <parakeet/Driver.h>
 
+#include <parakeet/exceptions/NotConnectedToSensorException.h>
+#include <parakeet/exceptions/UnableToDetermineBaudRateException.h>
+#include <parakeet/exceptions/UnableToOpenPortException.h>
+
 namespace mechaspin
 {
 namespace parakeet
 {
-    const std::string Driver::CW_STOP_ROTATING = "LSTOPH";
-    const std::string Driver::CW_START_NORMALLY = "LSTARH";
-    const std::string Driver::CW_STOP_ROTATING_FIX_DIST = "LMEASH";
-    const std::string Driver::CW_RESET_AND_RESTART = "LRESTH";
-    const std::string Driver::CW_VERSION_NUMBER = "LVERSH";
+    const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;  // Arbitrary size
+    const int MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
 
-    const std::string Driver::CW_ENABLE_DATA_SMOOTHING = "LSSS1H";
-    const std::string Driver::CW_DISABLE_DATA_SMOOTHING = "LSSS0H";
-    const std::string Driver::CW_ENABLE_DRAG_POINT_REMOVAL = "LFFF1H";
-    const std::string Driver::CW_DISABLE_DRAG_POINT_REMOVAL = "LFFF0H";
+    struct Driver::ScanData
+    {
+        unsigned short from;
+        unsigned short span;
+        unsigned short count;
+        unsigned short reserved;
+        unsigned short dist[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
+        unsigned char intensity[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
+    };
 
-    const std::string Driver::SW_START_WITH_INTENSITY = "LOCONH";
-    const std::string Driver::SW_START_WITHOUT_INTENSITY = "LNCONH";
+    struct Driver::MessageData
+    {
+        int len;
+        unsigned char body[MESSAGE_DATA_BUFFER_SIZE];
+    };
 
-    const std::string Driver::SW_SET_SPEED_PREFIX = "LSRPM:";
-    const std::string Driver::SW_SET_SPEED_POSTFIX = "H";
-    const std::string Driver::SW_SET_SPEED(int speed)
+    const std::string CW_STOP_ROTATING = "LSTOPH";
+    const std::string CW_START_NORMALLY = "LSTARH";
+    const std::string CW_STOP_ROTATING_FIX_DIST = "LMEASH";
+    const std::string CW_RESET_AND_RESTART = "LRESTH";
+    const std::string CW_VERSION_NUMBER = "LVERSH";
+
+    const std::string CW_ENABLE_DATA_SMOOTHING = "LSSS1H";
+    const std::string CW_DISABLE_DATA_SMOOTHING = "LSSS0H";
+    const std::string CW_ENABLE_DRAG_POINT_REMOVAL = "LFFF1H";
+    const std::string CW_DISABLE_DRAG_POINT_REMOVAL = "LFFF0H";
+
+    const std::string SW_START_WITH_INTENSITY = "LOCONH";
+    const std::string SW_START_WITHOUT_INTENSITY = "LNCONH";
+
+    const std::string SW_SET_SPEED_PREFIX = "LSRPM:";
+    const std::string SW_SET_SPEED_POSTFIX = "H";
+
+    const std::string SW_SET_BIAS_PREFIX = "LSERR:";
+    const std::string SW_SET_BIAS_POSTFIX = "H";
+
+    const std::string SW_SET_BAUD_RATE_PREFIX = "LSBPS:";
+    const std::string SW_SET_BAUD_RATE_POSTFIX = "H";
+    
+    const std::string SW_SET_SPEED(int speed)
     {
         return SW_SET_SPEED_PREFIX + std::to_string(speed) + SW_SET_SPEED_POSTFIX;
     }
 
-    const std::string Driver::SW_SET_BIAS_PREFIX = "LSERR:";
-    const std::string Driver::SW_SET_BIAS_POSTFIX = "H";
-    const std::string Driver::SW_SET_BIAS(int bias)
-    {
-        return SW_SET_BIAS_PREFIX + std::to_string(bias) + SW_SET_BIAS_POSTFIX;
-    }
-
-    const std::string Driver::Driver::SW_SET_BAUD_RATE_PREFIX = "LSBPS:";
-    const std::string Driver::SW_SET_BAUD_RATE_POSTFIX = "H";
-    const std::string Driver::SW_SET_BAUD_RATE(int baudRate)
+    const std::string SW_SET_BAUD_RATE(int baudRate)
     {
         return SW_SET_BAUD_RATE_PREFIX + std::to_string(baudRate) + SW_SET_BAUD_RATE_POSTFIX;
+    }
+    
+    const std::string SW_SET_BIAS(int bias)
+    {
+        return SW_SET_BIAS_PREFIX + std::to_string(bias) + SW_SET_BIAS_POSTFIX;
     }
 
     Driver::~Driver()
     {
         close();
     }
+    
+    void Driver::connect(const SensorConfiguration& sensorConfiguration)
+    {
+        this->sensorConfiguration = sensorConfiguration;
+
+        if(sensorConfiguration.baudRate == BaudRates::Auto)
+        {
+            autoFindBaudRate();
+        }
+
+        open();
+    }
 
     bool Driver::connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
     {
-        if(scanningFrequency_Hz == ScanningFrequency::NOT_INITIALIZED)
+        SensorConfiguration paramConfiguration(comPort, baudRate, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
+        
+        try
         {
-            throw std::runtime_error("Scanning Frequency must be intialized on connect");
+            connect(paramConfiguration);
+        }
+        catch (const std::runtime_error&)
+        {
             return false;
         }
-
-        if(baudRate == BaudRates::Auto)
-        {
-            return autoFindBaudRate(comPort, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
-        }
-
-        isAutoConnecting = false;
-
-        if (!serialPort.open(comPort.c_str(), baudRate))
-        {
-            std::cout << "Could not open port " << comPort << std::endl;
-            return false;
-        }
-
-        //There's no guarentee these will ever be recieved
-        serialPort.write(CW_STOP_ROTATING);
-
-        g_baudRate = baudRate;
-        g_withIntensity = intensity;
-        g_scanningFrequency_Hz = scanningFrequency_Hz;
-        g_withDataSmoothing = dataSmoothing;
-        g_withDragPointRemoval = dragPointRemoval;
 
         return true;
     }
 
-    bool Driver::autoFindBaudRate(const std::string& comPort, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
+    void Driver::open()
     {
-        isAutoConnecting = true;
+        if (serialPort.open(sensorConfiguration.comPort.c_str(), sensorConfiguration.baudRate))
+        {
+            serialPort.write(CW_STOP_ROTATING);
+        }
+        else
+        {
+            throw exceptions::UnableToOpenPortException();
+        }
+    }
 
+    void Driver::autoFindBaudRate()
+    {
         // Loop through all accepted baud rates
-        for (auto baudRate : mechaspin::parakeet::BaudRates::All)
+        for (BaudRate baudRate : BaudRates::All)
         {
             //Attempt connecting to the port
-            if (!serialPort.open(comPort.c_str(), baudRate.getValue()))
-            {
-                std::cout << "Could not open port " << comPort << std::endl;
-                return false;
-            }
+            this->sensorConfiguration.baudRate = baudRate;
+            
+            open();
 
             //start parsing data from the sensor
+            isAutoConnecting = true;
             start();
 
-            bool state = waitForMessage(LidarReturnMessage::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(250));
+            bool state = sendMessageWaitForResponseOrTimeout(internal::SensorResponse::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(500));
 
             stop();
             close();
+            isAutoConnecting = false;
 
-            if (state)
+            if(state)
             {
-                return connect(comPort, baudRate, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
+                return;
             }
         }
 
-        //failure to find the correct baud rate
-        return false;
+        throw exceptions::UnableToDetermineBaudRateException();
     }
 
     void Driver::start()
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot start until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
         runSerialInterfaceThread = true;
         interfaceThreadStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
         interfaceThreadFrameCount = 0;
         serialInterfaceThread = std::thread([&] { this->serialInterfaceThreadFunction(); });
 
-        waitForMessage(LidarReturnMessage::START, CW_START_NORMALLY, std::chrono::milliseconds(1000));
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::START, CW_START_NORMALLY, std::chrono::milliseconds(1000));
 
-        enableIntensityData(g_withIntensity);
-        enableDataSmoothing(g_withDataSmoothing);
-        enableRemoveDragPoint(g_withDragPointRemoval);
-        setScanningFrequency_Hz(g_scanningFrequency_Hz);
+        enableIntensityData(sensorConfiguration.intensity);
+        enableDataSmoothing(sensorConfiguration.dataSmoothing);
+        enableRemoveDragPoint(sensorConfiguration.dragPointRemoval);
+        setScanningFrequency_Hz(sensorConfiguration.scanningFrequency_Hz);
     }
 
     void Driver::stop()
@@ -163,129 +189,95 @@ namespace parakeet
 
     void Driver::enableDataSmoothing(bool enable)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify data smoothing until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
-        waitForMessage(LidarReturnMessage::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
 
-        g_withDataSmoothing = enable;
+        sensorConfiguration.dataSmoothing = enable;
     }
 
     void Driver::enableRemoveDragPoint(bool enable)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify remove drag point until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
-        waitForMessage(LidarReturnMessage::DRAGPOINTREMOVAL, enable ? CW_ENABLE_DRAG_POINT_REMOVAL : CW_DISABLE_DRAG_POINT_REMOVAL, std::chrono::milliseconds(250));
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DRAGPOINTREMOVAL, enable ? CW_ENABLE_DRAG_POINT_REMOVAL : CW_DISABLE_DRAG_POINT_REMOVAL, std::chrono::milliseconds(250));
 
-        g_withDragPointRemoval = enable;
+        sensorConfiguration.dragPointRemoval = enable;
     }
 
     void Driver::enableIntensityData(bool enable)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify intensity data status until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
-        waitForMessage(LidarReturnMessage::INTENSITY, enable ? SW_START_WITH_INTENSITY : SW_START_WITHOUT_INTENSITY, std::chrono::milliseconds(250));
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::INTENSITY, enable ? SW_START_WITH_INTENSITY : SW_START_WITHOUT_INTENSITY, std::chrono::milliseconds(250));
 
-        g_withIntensity = enable;
+        sensorConfiguration.intensity = enable;
     }
 
     void Driver::setScanningFrequency_Hz(ScanningFrequency Hz)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify scanning frequency until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
-        if(Hz == ScanningFrequency::NOT_INITIALIZED)
-        {
-            throw std::runtime_error("Can not set scanning frequency to NOT_INITIALIZED");
-        }
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::SPEED, SW_SET_SPEED(Hz * 60), std::chrono::milliseconds(250));
 
-        waitForMessage(LidarReturnMessage::SPEED, SW_SET_SPEED(Hz * 60), std::chrono::milliseconds(250));
-
-        g_scanningFrequency_Hz = Hz;
+        sensorConfiguration.scanningFrequency_Hz = Hz;
     }
 
     BaudRate Driver::getBaudRate()
     {
-        return g_baudRate;
+        return sensorConfiguration.baudRate;
     }
 
     void Driver::setBaudRate(BaudRate baudRate)
     {
-        if (!serialPort.isConnected())
+        throwExceptionIfNotConnected();
+
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(200));
+
+        sendMessageWaitForResponseOrTimeout(internal::SensorResponse::BAUDRATE, SW_SET_BAUD_RATE(baudRate.getValue()), std::chrono::milliseconds(0));
+
+        if(runSerialInterfaceThread)
         {
-            std::cout << "Cannot set baud rate of device until connected." << std::endl;
-            return;
+            stop();
+
+            serialPort.changeBaudRate(baudRate);
+
+            start();
+        }
+        else
+        {
+            serialPort.changeBaudRate(baudRate);
         }
 
-        waitForMessage(LidarReturnMessage::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(200));
-
-        waitForMessage(LidarReturnMessage::BAUDRATE, SW_SET_BAUD_RATE(baudRate.getValue()), std::chrono::milliseconds(0));
-
-        stop();
-
-        serialPort.changeBaudRate(baudRate);
-
-        start();
-
-        g_baudRate = baudRate;
+        sensorConfiguration.baudRate = baudRate;
     }
 
     bool Driver::isDataSmoothingEnabled()
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot get the value for data smoothing until connected." << std::endl;
-            return false;
-        }
+        throwExceptionIfNotConnected();
 
-        return g_withDataSmoothing;
+        return sensorConfiguration.dataSmoothing;
     }
 
     bool Driver::isDragPointRemovalEnabled()
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot get the value for drag point removal until connected." << std::endl;
-            return false;
-        }
+        throwExceptionIfNotConnected();
 
-        return g_withDragPointRemoval;
+        return sensorConfiguration.dragPointRemoval;
     }
 
     bool Driver::isIntensityDataEnabled()
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot get the value for intensity data until connected." << std::endl;
-            return false;
-        }
+        throwExceptionIfNotConnected();
 
-        return g_withIntensity;
+        return sensorConfiguration.intensity;
     }
 
     Driver::ScanningFrequency Driver::getScanningFrequency_Hz()
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot get the value for scanning frequency until connected." << std::endl;
-            return NOT_INITIALIZED;
-        }
+        throwExceptionIfNotConnected();
 
-        return g_scanningFrequency_Hz;
+        return sensorConfiguration.scanningFrequency_Hz;
     }
 
     double Driver::getScanRate_Hz()
@@ -304,8 +296,7 @@ namespace parakeet
 
     void Driver::serialInterfaceThreadFunction()
     {
-        int buf_size = 8 * 1024;
-        unsigned char* line = new unsigned char[buf_size];
+        unsigned char* line = new unsigned char[MESSAGE_DATA_BUFFER_SIZE];
         int len = 0;
 
         while (runSerialInterfaceThread)
@@ -316,7 +307,7 @@ namespace parakeet
                 continue;
             }
 
-            int charsRead = serialPort.read(line, len, buf_size);
+            int charsRead = serialPort.read(line, len, MESSAGE_DATA_BUFFER_SIZE);
 
             if (charsRead == 0)
             {
@@ -325,7 +316,7 @@ namespace parakeet
 
             len += charsRead;
 
-            int nl = Parse(len, line);
+            int nl = parseSensorDataFromBuffer(len, line);
 
             for (int i = nl; i<len; i++)
             {
@@ -335,85 +326,61 @@ namespace parakeet
         }
     }
 
-    void Driver::OnMsg(CommandData* msg)
+    void Driver::onMessageDataReceived(MessageData* message)
     {
-        if (msg->body[0] == 'S' && msg->body[1] == 'T' && msg->body[6] == 'E' && msg->body[7] == 'D')
+        std::string messageAsString(reinterpret_cast<char*>(message->body), message->len);
+
+        internal::SensorResponse sensorResponse = sensorResponseParser.getSensorResponseFromMessage(messageAsString);
+
+        if(sensorResponse.getMessageType() != internal::SensorResponse::NA)
+        {
+            sensorReturnMessageState[sensorResponse.getMessageType()] = true;
+        }
+
+        delete message;
+    }
+
+    void Driver::onScanDataReceived(ScanData* scanData)
+    {
+        if(pointHoldingList.size() == 0)
+        {
+            timeOfFirstPoint = std::chrono::system_clock::now();
+        }
+
+        double startAngle_deg = scanData->from / 10.0;
+        double endAngle_deg = (static_cast<double>(scanData->from) + static_cast<double>(scanData->span)) / 10.0;
+        double anglePerPoint_deg = (endAngle_deg - startAngle_deg) / scanData->count;
+        double deviationFrom360_deg = 1;
+
+        //Create PointPolar for each data point
+        for(int i = 0; i < scanData->count; i++)
+        {
+            PointPolar pointPolar(scanData->dist[i], startAngle_deg + (anglePerPoint_deg * i), scanData->intensity[i]);
+
+            pointHoldingList.push_back(pointPolar);
+        }
+
+        if(endAngle_deg + deviationFrom360_deg >= 360)
         {
             interfaceThreadFrameCount++;
 
-            ScanDataPolar sdp(pointHoldingList);
+            ScanDataPolar scanDataPolar(pointHoldingList, timeOfFirstPoint);
 
             if (scanCallbackFunction != nullptr)
             {
-                scanCallbackFunction(sdp);
+                scanCallbackFunction(scanDataPolar);
             }
 
             pointHoldingList.clear();
         }
-        else
-        {
-            std::string stringForm(reinterpret_cast<char*>(msg->body), msg->len);
 
-            if (stringForm.rfind("LiDAR STOP") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::STOP] = true;
-            }
-
-            if (stringForm.rfind("LiDAR START") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::START] = true;
-            }
-
-            if (stringForm.rfind("Error: OK") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::BAUDRATE] = true;
-            }
-
-            if (stringForm.rfind("LiDAR CONFID") != std::string::npos || stringForm.rfind("LiDAR NO CONFID") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::INTENSITY] = true;
-            }
-
-            if (stringForm.rfind("LiDAR set smooth ok") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::DATASMOOTHING] = true;
-            }
-
-            if (stringForm.rfind("LiDAR set filter ok") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::DRAGPOINTREMOVAL] = true;
-            }
-
-            if (stringForm.rfind("Set RPM: OK") != std::string::npos)
-            {
-                sensorMessages[LidarReturnMessage::SPEED] = true;
-            }
-        }
-
-        delete msg;
+        delete scanData;
     }
 
-    void Driver::OnData(ScanData* data)
-    {
-        double startAngle = data->from / 10.0;
-        double endAngle = (static_cast<double>(data->from) + static_cast<double>(data->span)) / 10.0;
-        double anglePerPoint = (endAngle - startAngle) / data->count;
-
-        //Create PointPolar for each data point
-        for(int i = 0; i < data->count; i++)
-        {
-            PointPolar p(data->dist[i], startAngle + (anglePerPoint * i), data->intensity[i]);
-
-            pointHoldingList.push_back(p);
-        }
-
-        delete data;
-    }
-
-    int Driver::Parse(int nl, unsigned char* buf)
+    int Driver::parseSensorDataFromBuffer(int length, unsigned char* buf)
     {
         int idx = 0, found = 0;
-        while (idx + 8 < nl)
+        while (idx + 8 < length)
         {
             if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
             {
@@ -429,18 +396,18 @@ namespace parakeet
 
         if (idx > 0)// && found == 0)
         {
-            CommandData* cmd = new CommandData;
+            MessageData* cmd = new MessageData;
             if (found)
             {
                 cmd->len = idx;
             }
             else
             {
-                cmd->len = nl;
+                cmd->len = length;
             }
             memcpy(cmd->body, buf, cmd->len);
 
-            OnMsg(cmd);
+            onMessageDataReceived(cmd);
         }
 
         while (found)
@@ -450,10 +417,10 @@ namespace parakeet
             memcpy(&cnt, buf + idx + 2, 2);
             memcpy(&start, buf + idx + 4, 2);
 
-            if (!g_withIntensity)
+            if (!sensorConfiguration.intensity)
             {
                 //2 Byte
-                if (idx + 8 + cnt * 2 > nl)
+                if (idx + 8 + cnt * 2 > length)
                 {
                     break;
                 }
@@ -475,7 +442,7 @@ namespace parakeet
 
                     sum += val;
 
-                    if (g_withIntensity)
+                    if (sensorConfiguration.intensity)
                     {
                         data->dist[i] = val & 0x1FFF;
                         data->intensity[i] = val >> 13;
@@ -492,7 +459,7 @@ namespace parakeet
                 unsigned short chk = lo | (hi << 8);
                 if (chk == sum)
                 {
-                    OnData(data);
+                    onScanDataReceived(data);
                 }
                 else if(!isAutoConnecting)
                 {
@@ -505,7 +472,7 @@ namespace parakeet
             else
             {
                 //3 Byte
-                if (idx + 8 + cnt * 3 > nl)
+                if (idx + 8 + cnt * 3 > length)
                 {
                     break;
                 }
@@ -539,7 +506,7 @@ namespace parakeet
                 unsigned short hi = pdata[cnt * 3+1];
                 if (((hi<<8) | lo) == sum)
                 {
-                    OnData(data);
+                    onScanDataReceived(data);
                 }
                 else if(!isAutoConnecting)
                 {
@@ -548,7 +515,7 @@ namespace parakeet
                 }
             }
 
-            if (idx + 8 > nl)
+            if (idx + 8 > length)
             {
                 break;
             }
@@ -566,16 +533,16 @@ namespace parakeet
         return idx;
     }
 
-    bool Driver::waitForMessage(Driver::LidarReturnMessage messageType, const std::string& message, std::chrono::milliseconds timeout)
+    bool Driver::sendMessageWaitForResponseOrTimeout(internal::SensorResponse::MessageType messageType, const std::string& message, std::chrono::milliseconds timeout)
     {
         auto startTime = std::chrono::system_clock::now();
 
-        sensorMessages[messageType] = false;
+        sensorReturnMessageState[messageType] = false;
 
         serialPort.write(message);
 
         int msCount = 0;
-        while (!sensorMessages[messageType]
+        while (!sensorReturnMessageState[messageType]
             && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count() < timeout.count())
         {
             if (msCount % 10)
@@ -587,7 +554,15 @@ namespace parakeet
             msCount++;
         }
 
-        return sensorMessages[messageType];
+        return sensorReturnMessageState[messageType];
+    }
+
+    void Driver::throwExceptionIfNotConnected()
+    {
+        if(!serialPort.isConnected())
+        {
+            throw exceptions::NotConnectedToSensorException();
+        }
     }
 }
 }

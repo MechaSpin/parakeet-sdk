@@ -7,7 +7,7 @@
 #include <parakeet/Driver.h>
 #include <parakeet/util.h>
 
-const char versionNumber[] = "1.0.0";
+const char versionNumber[] = "1.1.0";
 
 std::shared_ptr<mechaspin::parakeet::PointPolar> minPoint;
 std::shared_ptr<mechaspin::parakeet::PointPolar> maxPoint;
@@ -29,12 +29,12 @@ void onScanComplete(const mechaspin::parakeet::ScanDataPolar& scanData)
 
     for (size_t i = 0; i < pointList.size(); i++)
     {
-        if (minPoint == nullptr || pointList[i].getRange() < minPoint->getRange())
+        if (minPoint == nullptr || pointList[i].getRange_mm() < minPoint->getRange_mm())
         {
             minPoint = std::make_shared<mechaspin::parakeet::PointPolar>(pointList[i]);
         }
 
-        if (maxPoint == nullptr || pointList[i].getRange() > maxPoint->getRange())
+        if (maxPoint == nullptr || pointList[i].getRange_mm() > maxPoint->getRange_mm())
         {
             maxPoint = std::make_shared<mechaspin::parakeet::PointPolar>(pointList[i]);
         }
@@ -54,33 +54,11 @@ void printOptionsMenu()
     std::cout << "**********************" << std::endl;
 }
 
-int main(int argc, char* argv[])
+void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& sensorConfiguration)
 {
-    if (argc != 3)
-    {
-        std::cout
-            << "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
-            << "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
-        return -1;
-    }
-
-    std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
-
     mechaspin::parakeet::Driver parakeetSensorDriver;
 
-    std::string comPort = argv[1];
-    mechaspin::parakeet::BaudRate baudRate(atoi(argv[2]));
-    bool useDataSmoothing = false;
-    bool useDragPointRemoval = false;
-    bool intensity = true;
-    mechaspin::parakeet::Driver::ScanningFrequency startingScanFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
-
-    std::cout << "Attempting connection to sensor." << std::endl;
-    if(!parakeetSensorDriver.connect(comPort, baudRate, intensity, startingScanFrequency_Hz, useDataSmoothing, useDragPointRemoval))
-    {
-        std::cout << "Unable to connect to " << comPort << ", check to ensure that is the proper COM Port and that the unit is plugged in." << std::endl;
-        return -2;
-    }
+    parakeetSensorDriver.connect(sensorConfiguration);
 
     parakeetSensorDriver.registerScanCallback(onScanComplete);
 
@@ -115,8 +93,8 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            std::cout << "Min point: (" << minPoint->getRange() << ", " << minPoint->getAngleInDegrees() << ") Intensity: " << minPoint->getIntensity() << std::endl;
-            std::cout << "Max point: (" << maxPoint->getRange() << ", " << maxPoint->getAngleInDegrees() << ") Intensity: " << maxPoint->getIntensity() << std::endl;
+            std::cout << "Min point: (" << minPoint->getRange_mm() << ", " << minPoint->getAngle_deg() << ") Intensity: " << minPoint->getIntensity() << std::endl;
+            std::cout << "Max point: (" << maxPoint->getRange_mm() << ", " << maxPoint->getAngle_deg() << ") Intensity: " << maxPoint->getIntensity() << std::endl;
 
             std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count() << "ms ago." << std::endl;
 
@@ -133,8 +111,8 @@ int main(int argc, char* argv[])
             mechaspin::parakeet::PointXY minPointXY = mechaspin::parakeet::util::transform(*minPoint);
             mechaspin::parakeet::PointXY maxPointXY = mechaspin::parakeet::util::transform(*maxPoint);
 
-            std::cout << "Min point: (" << minPointXY.getX() << ", " << minPointXY.getY() << ") Intensity: " << minPointXY.getIntensity() << std::endl;
-            std::cout << "Max point: (" << maxPointXY.getX() << ", " << maxPointXY.getY() << ") Intensity: " << maxPointXY.getIntensity() << std::endl;
+            std::cout << "Min point: (" << minPointXY.getX_mm() << ", " << minPointXY.getY_mm() << ") Intensity: " << minPointXY.getIntensity() << std::endl;
+            std::cout << "Max point: (" << maxPointXY.getX_mm() << ", " << maxPointXY.getY_mm() << ") Intensity: " << maxPointXY.getIntensity() << std::endl;
 
             std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count() << "ms ago." << std::endl;
 
@@ -151,6 +129,36 @@ int main(int argc, char* argv[])
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        std::cout
+            << "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
+            << "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
+        return -1;
+    }
+
+    std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
+
+    mechaspin::parakeet::Driver::SensorConfiguration sensorConfiguration;
+    sensorConfiguration.comPort = argv[1];
+    sensorConfiguration.baudRate = mechaspin::parakeet::BaudRate(atoi(argv[2]));
+    sensorConfiguration.dataSmoothing = false;
+    sensorConfiguration.dragPointRemoval = false;
+    sensorConfiguration.intensity = true;
+    sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
+
+    try
+    {
+        startAndRunSensor(sensorConfiguration);
+    }
+    catch (const std::runtime_error& error)
+    {
+        std::cout << "The following exception occured when running the parakeet driver: " << error.what() << std::endl;
     }
 
     return 0;
