@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.5)
-project(Parakeet VERSION 2.0.0)
+project(Parakeet VERSION 2.1.0)
 
 set (PROJECT_VERSION_STRING ${PROJECT_NAME}-${PROJECT_VERSION})
 
@@ -21,13 +21,13 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponse.h
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponseParser.h
 	${PARAKEET_HEADER_ROOT}/internal/SerialPortHelper.h
+	${PARAKEET_HEADER_ROOT}/Pro/Driver.h
 )
 
 set(PARAKEET_SOURCE_ROOT_OUTSIDE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(PARAKEET_SOURCE_ROOT ${PARAKEET_SOURCE_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/BaudRate.cpp
-	${PARAKEET_SOURCE_ROOT}/Driver.cpp
 	${PARAKEET_SOURCE_ROOT}/PointPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/PointXY.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataPolar.cpp
@@ -40,6 +40,7 @@ set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/internal/SensorResponse.cpp
 	${PARAKEET_SOURCE_ROOT}/internal/SensorResponseParser.cpp
 	${PARAKEET_SOURCE_ROOT}/internal/SerialPortHelper.cpp
+	${PARAKEET_SOURCE_ROOT}/Pro/Driver.cpp
 )
 
 include(CMakePackageConfigHelpers)

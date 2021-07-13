@@ -2,7 +2,7 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#include <parakeet/Driver.h>
+#include <parakeet/Pro/Driver.h>
 
 #include <parakeet/exceptions/NotConnectedToSensorException.h>
 #include <parakeet/exceptions/UnableToDetermineBaudRateException.h>
@@ -11,6 +11,8 @@
 namespace mechaspin
 {
 namespace parakeet
+{
+namespace Pro
 {
     const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;  // Arbitrary size
     const int MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
@@ -189,7 +191,11 @@ namespace parakeet
 
     void Driver::enableDataSmoothing(bool enable)
     {
-        throwExceptionIfNotConnected();
+        if (!serialPort.isConnected())
+        {
+            std::cout << "Cannot modify data smoothing until connected." << std::endl;
+            return;
+        }
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
 
@@ -564,5 +570,6 @@ namespace parakeet
             throw exceptions::NotConnectedToSensorException();
         }
     }
+}
 }
 }
