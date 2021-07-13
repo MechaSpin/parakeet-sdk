@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 3.10)
-project(Parakeet VERSION 1.1.0)
+cmake_minimum_required (VERSION 3.5)
+project(Parakeet VERSION 2.0.0)
 
 set (PROJECT_VERSION_STRING ${PROJECT_NAME}-${PROJECT_VERSION})
 
@@ -15,6 +15,11 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/ScanDataXY.h
 	${PARAKEET_HEADER_ROOT}/SerialPort.h
 	${PARAKEET_HEADER_ROOT}/util.h
+	${PARAKEET_HEADER_ROOT}/exceptions/NotConnectedToSensorException.h
+	${PARAKEET_HEADER_ROOT}/exceptions/UnableToDetermineBaudRateException.h
+	${PARAKEET_HEADER_ROOT}/exceptions/UnableToOpenPortException.h
+	${PARAKEET_HEADER_ROOT}/internal/SensorResponse.h
+	${PARAKEET_HEADER_ROOT}/internal/SensorResponseParser.h
 	${PARAKEET_HEADER_ROOT}/internal/SerialPortHelper.h
 )
 
@@ -29,6 +34,11 @@ set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/ScanDataXY.cpp
 	${PARAKEET_SOURCE_ROOT}/SerialPort.cpp
 	${PARAKEET_SOURCE_ROOT}/util.cpp
+	${PARAKEET_SOURCE_ROOT}/exceptions/NotConnectedToSensorException.cpp
+	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToDetermineBaudRateException.cpp
+	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToOpenPortException.cpp
+	${PARAKEET_SOURCE_ROOT}/internal/SensorResponse.cpp
+	${PARAKEET_SOURCE_ROOT}/internal/SensorResponseParser.cpp
 	${PARAKEET_SOURCE_ROOT}/internal/SerialPortHelper.cpp
 )
 
@@ -37,9 +47,8 @@ include(GNUInstallDirs)
 
 find_package(Threads REQUIRED)
 
-add_library (${PROJECT_NAME}
-	${PARAKEET_SOURCE} ${PARAKEET_HEADER}
-)
+add_library(${PROJECT_NAME} ${PARAKEET_SOURCE} ${PARAKEET_HEADER})
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 if(WIN32)
 	set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")

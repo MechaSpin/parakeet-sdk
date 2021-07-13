@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_POINTPOLAR_H
+#define PARAKEET_POINTPOLAR_H
 
 #include <cstdint>
 #include "macros.h"
@@ -49,3 +50,5 @@ class PointPolar
 };
 }
 }
+
+#endif

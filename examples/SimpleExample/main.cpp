@@ -7,7 +7,7 @@
 #include <parakeet/Driver.h>
 #include <parakeet/util.h>
 
-const char versionNumber[] = "1.0.0";
+const char versionNumber[] = "1.1.0";
 
 std::shared_ptr<mechaspin::parakeet::PointPolar> minPoint;
 std::shared_ptr<mechaspin::parakeet::PointPolar> maxPoint;
@@ -54,33 +54,11 @@ void printOptionsMenu()
     std::cout << "**********************" << std::endl;
 }
 
-int main(int argc, char* argv[])
+void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& sensorConfiguration)
 {
-    if (argc != 3)
-    {
-        std::cout
-            << "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
-            << "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
-        return -1;
-    }
-
-    std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
-
     mechaspin::parakeet::Driver parakeetSensorDriver;
 
-    std::string comPort = argv[1];
-    mechaspin::parakeet::BaudRate baudRate(atoi(argv[2]));
-    bool useDataSmoothing = false;
-    bool useDragPointRemoval = false;
-    bool intensity = true;
-    mechaspin::parakeet::Driver::ScanningFrequency startingScanFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
-
-    std::cout << "Attempting connection to sensor." << std::endl;
-    if(!parakeetSensorDriver.connect(comPort, baudRate, intensity, startingScanFrequency_Hz, useDataSmoothing, useDragPointRemoval))
-    {
-        std::cout << "Unable to connect to " << comPort << ", check to ensure that is the proper COM Port and that the unit is plugged in." << std::endl;
-        return -2;
-    }
+    parakeetSensorDriver.connect(sensorConfiguration);
 
     parakeetSensorDriver.registerScanCallback(onScanComplete);
 
@@ -151,6 +129,36 @@ int main(int argc, char* argv[])
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        std::cout
+            << "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
+            << "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
+        return -1;
+    }
+
+    std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
+
+    mechaspin::parakeet::Driver::SensorConfiguration sensorConfiguration;
+    sensorConfiguration.comPort = argv[1];
+    sensorConfiguration.baudRate = mechaspin::parakeet::BaudRate(atoi(argv[2]));
+    sensorConfiguration.dataSmoothing = false;
+    sensorConfiguration.dragPointRemoval = false;
+    sensorConfiguration.intensity = true;
+    sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
+
+    try
+    {
+        startAndRunSensor(sensorConfiguration);
+    }
+    catch (const std::runtime_error& error)
+    {
+        std::cout << "The following exception occured when running the parakeet driver: " << error.what() << std::endl;
     }
 
     return 0;

@@ -11,6 +11,12 @@ namespace ioctl
 }
 #include <asm/termios.h>
 
+namespace mechaspin
+{
+namespace parakeet
+{
+namespace internal
+{
 void SerialPortHelper::setCustomBaudRate(int fileDescriptor, int baudRate)
 {
     //Set baud rate, using termios2 here as termios1 does not support custom baud rates.
@@ -23,5 +29,8 @@ void SerialPortHelper::setCustomBaudRate(int fileDescriptor, int baudRate)
     tty2.c_ospeed = baudRate;
 
     ioctl::ioctl(fileDescriptor, TCSETS2, &tty2);
+}
+}
+}
 }
 #endif

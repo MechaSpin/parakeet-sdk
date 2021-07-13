@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_BAUDRATE_H
+#define PARAKEET_BAUDRATE_H
 
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@ class BaudRate
         /// \returns A BaudRate object which holds the baud rate value given through the param.
         constexpr BaudRate(int value) : value(value)
         {
-
+            
         }
 
         /// \brief Get the baud rate value as a string
@@ -56,3 +57,5 @@ namespace BaudRates
 }
 }
 }
+
+#endif

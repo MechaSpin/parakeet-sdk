@@ -2,7 +2,8 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#pragma once
+#ifndef PARAKEET_POINTXY_H
+#define PARAKEET_POINTXY_H
 
 #include <cstdint>
 #include "macros.h"
@@ -50,3 +51,5 @@ class PointXY
 };
 }
 }
+
+#endif
