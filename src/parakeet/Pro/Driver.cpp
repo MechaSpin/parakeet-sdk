@@ -13,8 +13,7 @@ namespace parakeet
 {
 namespace Pro
 {
-    const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
-
+    const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;           // Arbitrary size
     struct Driver::MessageData
     {
         int len;
@@ -64,6 +63,11 @@ namespace Pro
         this->registerUpdateThreadCallback(std::bind(&Driver::serialUpdateThreadFunction, this));
 
         serialPortDataBuffer = new unsigned char[SERIAL_MESSAGE_DATA_BUFFER_SIZE];
+    }
+
+    Driver::~Driver()
+    {
+        close();
     }
 
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
@@ -349,12 +353,11 @@ namespace Pro
                 }
 
                 ScanData* data = new ScanData;
-                data->from = start;
-                data->span = 360;
+                data->startAngle_deg = start / 10.0;
+                data->endAngle_deg = (static_cast<double>(data->startAngle_deg) + 360) / 10.0;
                 data->count = cnt;
 
                 unsigned short sum = start + cnt;
-
                 unsigned char* pdata = buf + idx + 6;
                 for (int i = 0; i < cnt; i++)
                 {
@@ -367,12 +370,12 @@ namespace Pro
 
                     if (sensorConfiguration.intensity)
                     {
-                        data->dist[i] = val & 0x1FFF;
+                        data->dist_mm[i] = val & 0x1FFF;
                         data->intensity[i] = val >> 13;
                     }
                     else
                     {
-                        data->dist[i] = val;
+                        data->dist_mm[i] = val;
                         data->intensity[i] = 0;
                     }
                 }
@@ -401,8 +404,8 @@ namespace Pro
                 }
 
                 ScanData* data = new ScanData;
-                data->from = start;
-                data->span = 360;
+                data->startAngle_deg = start;
+                data->endAngle_deg = (static_cast<double>(data->startAngle_deg) + 360) / 10.0;
                 data->count = cnt;
                 unsigned short sum = start + cnt;
 
@@ -420,7 +423,7 @@ namespace Pro
 
                     sum += val;
 
-                    data->dist[i] = val;
+                    data->dist_mm[i] = val;
                 }
 
                 idx += 8 + cnt * 3;

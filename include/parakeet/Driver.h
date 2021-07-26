@@ -28,9 +28,6 @@ class Driver
             Frequency_15Hz = 15
         };
 
-        /// \brief A constructor responsible for intializing default variable states
-        ~Driver();
-
         /// \brief Gets the scan rate from the sensor
         /// \returns The scan rate
         double getScanRate_Hz();
@@ -81,25 +78,33 @@ class Driver
         void registerScanCallback(std::function<void(const ScanDataPolar&)> callback);
 
     protected:
-        static const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;  // Arbitrary size
+        static const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;          // Arbitrary size
         struct ScanData
         {
-            unsigned short from;
-            unsigned short span;
+            double startAngle_deg;
+            double endAngle_deg;
             unsigned short count;
             unsigned short reserved;
-            unsigned short dist[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
+            unsigned short dist_mm[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
             unsigned char intensity[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
         };
+
+        struct DataPoint
+        {
+            float angle;
+            float distance;
+            unsigned char confidence;
+        };
+
 
         void registerUpdateThreadCallback(std::function<void ()> callback);
         void throwExceptionIfNotConnected();
 
         virtual bool isConnected() = 0;
 
-        void onScanDataReceived(ScanData* scanData);
-
         bool isUpdateThreadRunning();
+
+        void onScanDataReceived(ScanData* scanData);
     private:
         void updateThreadMainLoop();
 
