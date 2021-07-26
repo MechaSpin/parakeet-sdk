@@ -63,32 +63,22 @@ namespace internal
 
     void Parser::parseStartAngle()
     {
-        uint32_t startAngle;
-
-        memcpy(&startAngle, bufferData.buffer + BUFFER_POS_START_ANGLE, sizeof(currentLidarMessage->startAngle));
-
-        currentLidarMessage->startAngle = startAngle / 1000;
+        memcpy(&currentLidarMessage->startAngle, bufferData.buffer + BUFFER_POS_START_ANGLE, sizeof(currentLidarMessage->startAngle));
     }
 
     void Parser::parseEndAngle()
     {
-        uint32_t endAngle;
-
-        memcpy(&endAngle, bufferData.buffer + BUFFER_POS_END_ANGLE, sizeof(currentLidarMessage->endAngle));
-
-        currentLidarMessage->endAngle = endAngle / 1000;
+        memcpy(&currentLidarMessage->endAngle, bufferData.buffer + BUFFER_POS_END_ANGLE, sizeof(currentLidarMessage->endAngle));
     }
 
     void Parser::parseSensorProperties()
     {
-        uint32_t sensorPropertyFlags;
+        memcpy(&currentLidarMessage->sensorPropertyFlags.value, bufferData.buffer + BUFFER_POS_PROPERTY_FLAGS, sizeof(currentLidarMessage->sensorPropertyFlags.value));
 
-        memcpy(&sensorPropertyFlags, bufferData.buffer + BUFFER_POS_PROPERTY_FLAGS, sizeof(sensorPropertyFlags));
-
-        currentLidarMessage->sensorPropertyFlags.unitIsInCM = sensorPropertyFlags | 0x1;
-        currentLidarMessage->sensorPropertyFlags.withIntensity = sensorPropertyFlags | 0x2;
-        currentLidarMessage->sensorPropertyFlags.doDragPointRemoval = sensorPropertyFlags | 0x4;
-        currentLidarMessage->sensorPropertyFlags.doDataSmoothing = sensorPropertyFlags | 0x8;
+        currentLidarMessage->sensorPropertyFlags.unitIsInCM = currentLidarMessage->sensorPropertyFlags.value | 0x1;
+        currentLidarMessage->sensorPropertyFlags.withIntensity = currentLidarMessage->sensorPropertyFlags.value | 0x2;
+        currentLidarMessage->sensorPropertyFlags.doDragPointRemoval = currentLidarMessage->sensorPropertyFlags.value | 0x4;
+        currentLidarMessage->sensorPropertyFlags.doDataSmoothing = currentLidarMessage->sensorPropertyFlags.value | 0x8;
     }
 
     void Parser::parseTimestamp()
@@ -103,9 +93,9 @@ namespace internal
 
     void Parser::parsePoints()
     {
-        uint8_t BUFFER_POS_DISTANCES = BUFFER_POS_POINT_DATA;
-        uint8_t BUFFER_POS_RELATIVE_START_ANGLES = BUFFER_POS_DISTANCES + (currentLidarMessage->numPointsInSector * SIZE_OF_DISTANCE);
-        uint8_t BUFFER_POS_INTENSITY = BUFFER_POS_RELATIVE_START_ANGLES + (currentLidarMessage->numPointsInSector * SIZE_OF_RELATIVE_START_ANGLE);
+        uint16_t BUFFER_POS_DISTANCES = BUFFER_POS_POINT_DATA;
+        uint16_t BUFFER_POS_RELATIVE_START_ANGLES = BUFFER_POS_DISTANCES + (currentLidarMessage->numPointsInSector * SIZE_OF_DISTANCE);
+        uint16_t BUFFER_POS_INTENSITY = BUFFER_POS_RELATIVE_START_ANGLES + (currentLidarMessage->numPointsInSector * SIZE_OF_RELATIVE_START_ANGLE);
 
         for (uint8_t i = 0; i < currentLidarMessage->numPointsInSector; i++)
         {
@@ -154,6 +144,41 @@ namespace internal
         parseChecksum();
     }
 
+    bool Parser::doesChecksumMatch()
+    {
+        uint16_t newChecksum = 0;
+
+        newChecksum += currentLidarMessage->numPoints;
+        newChecksum += currentLidarMessage->numPointsInSector;
+        newChecksum += currentLidarMessage->sectorDataOffset;
+
+        newChecksum += currentLidarMessage->startAngle >> 16;
+        newChecksum += currentLidarMessage->startAngle & 0xFFFF;
+
+        newChecksum += currentLidarMessage->endAngle >> 16;
+        newChecksum += currentLidarMessage->endAngle & 0xFFFF;
+
+        newChecksum += currentLidarMessage->sensorPropertyFlags.value >> 16;
+        newChecksum += currentLidarMessage->sensorPropertyFlags.value & 0xFFFF;
+
+        newChecksum += currentLidarMessage->timestamp >> 16;
+        newChecksum += currentLidarMessage->timestamp & 0xFFFF;
+
+        newChecksum += currentLidarMessage->deviceNumber >> 16;
+        newChecksum += currentLidarMessage->deviceNumber & 0xFFFF;
+
+        for(LidarPoint lidarPoint : currentLidarMessage->lidarPoints)
+        {
+            newChecksum += lidarPoint.distance;
+            newChecksum += lidarPoint.relativeStartAngle;
+            newChecksum += lidarPoint.intensity;
+        }
+
+        //newChecksum = (newChecksum >> 8) | (newChecksum << 8);
+
+        return newChecksum == currentLidarMessage->checksum;
+    }
+
     int Parser::getTotalPointsOfAllPartialScans()
     {
         int totalPoints = 0;
@@ -172,7 +197,17 @@ namespace internal
 
     bool Parser::isScanCorrupt()
     {
-        return getTotalPointsOfAllPartialScans() > currentLidarMessage->numPointsInSector;
+        if (getTotalPointsOfAllPartialScans() > currentLidarMessage->numPointsInSector)
+        {
+            return true;
+        }
+
+        if (!doesChecksumMatch())
+        {
+            return true;
+        }
+
+        return false;
     }
 
     void Parser::createAndPublishCompleteScan()
@@ -183,8 +218,8 @@ namespace internal
 
         lidarMessage->totalPoints = firstMessage->numPoints;
         lidarMessage->endAngle = firstMessage->deviceNumber;
-        lidarMessage->startAngle = firstMessage->startAngle;
-        lidarMessage->endAngle = firstMessage->endAngle;
+        lidarMessage->startAngle = firstMessage->startAngle / 1000;
+        lidarMessage->endAngle = firstMessage->endAngle / 1000;
         lidarMessage->timestamp = firstMessage->timestamp;
 
         lidarMessage->sensorPropertyFlags = firstMessage->sensorPropertyFlags;
