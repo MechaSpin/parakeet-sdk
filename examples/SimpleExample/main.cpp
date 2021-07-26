@@ -4,7 +4,8 @@
 
 #include <iostream>
 
-#include <parakeet/Driver.h>
+#include <parakeet/ProE/Driver.h>
+#include <parakeet/Pro/Driver.h>
 #include <parakeet/util.h>
 
 const char versionNumber[] = "1.1.0";
@@ -54,17 +55,13 @@ void printOptionsMenu()
     std::cout << "**********************" << std::endl;
 }
 
-void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& sensorConfiguration)
+void startAndRunSensor(mechaspin::parakeet::Driver* parakeetSensorDriver)
 {
-    mechaspin::parakeet::Driver parakeetSensorDriver;
-
-    parakeetSensorDriver.connect(sensorConfiguration);
-
-    parakeetSensorDriver.registerScanCallback(onScanComplete);
+    parakeetSensorDriver->registerScanCallback(onScanComplete);
 
     std::cout << "Starting driver." << std::endl;
 
-    parakeetSensorDriver.start();
+    parakeetSensorDriver->start();
 
     printOptionsMenu();
 
@@ -76,14 +73,14 @@ void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& s
         switch (c)
         {
         case 'f':
-            std::cout << "FPS: " << parakeetSensorDriver.getScanRate_Hz() << std::endl;
+            std::cout << "FPS: " << parakeetSensorDriver->getScanRate_Hz() << std::endl;
             break;
         case 's':
-            std::cout << "Intensity data enabled: " << parakeetSensorDriver.isIntensityDataEnabled() << std::endl;
-            std::cout << "Drag point enabled: " << parakeetSensorDriver.isDragPointRemovalEnabled() << std::endl;
-            std::cout << "Data smoothing enabled: " << parakeetSensorDriver.isDataSmoothingEnabled() << std::endl;
-            std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver.getScanningFrequency_Hz() << std::endl;
-            std::cout << "Baud Rate: " << parakeetSensorDriver.getBaudRate().getValue() << std::endl;
+            std::cout << "Intensity data enabled: " << parakeetSensorDriver->isIntensityDataEnabled() << std::endl;
+            std::cout << "Drag point enabled: " << parakeetSensorDriver->isDragPointRemovalEnabled() << std::endl;
+            std::cout << "Data smoothing enabled: " << parakeetSensorDriver->isDataSmoothingEnabled() << std::endl;
+            std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver->getScanningFrequency_Hz() << std::endl;
+            //std::cout << "Baud Rate: " << parakeetSensorDriver->getBaudRate().getValue() << std::endl;
             break;
         case 'z':
         {
@@ -124,7 +121,7 @@ void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& s
         case 'q':
             std::cout << "Shutting application down." << std::endl;
             commandLoop = false;
-            parakeetSensorDriver.close();
+            parakeetSensorDriver->close();
             break;
         }
 
@@ -132,34 +129,97 @@ void startAndRunSensor(const mechaspin::parakeet::Driver::SensorConfiguration& s
     }
 }
 
+void printMissingSensorInfo(bool parakeetPro, bool parakeetProE)
+{
+    std::cout << "Must start application with sensor information!" << std::endl;
+    if (parakeetPro)
+    {
+        std::cout << "Parakeet Pro: \"Pro COMPORT BAUDRATE\" ie: \"/dev/ttyUSB0 0\"" << std::endl;
+    }
+    if (parakeetProE)
+    {
+        std::cout << "Parakeet ProE: \"ProE IPADDRESS LIDARPORT LOCALPORT\" ie: \"192.168.0.98 6543 6668\"" << std::endl;
+    }
+}
+
 int main(int argc, char* argv[])
 {
-    if (argc != 3)
+    if (argc < 2)
     {
-        std::cout
-            << "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
-            << "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
+        printMissingSensorInfo(true, true);
+
         return -1;
+    }
+
+    mechaspin::parakeet::Driver* driver;
+
+    if (std::string("Pro").find(argv[1]) != std::string::npos)
+    {
+        if (argc != 4)
+        {
+            printMissingSensorInfo(true, false);
+
+            return -2;
+        }
+
+        mechaspin::parakeet::Pro::Driver::SensorConfiguration sensorConfiguration;
+        sensorConfiguration.comPort = argv[2];
+        sensorConfiguration.baudRate = mechaspin::parakeet::BaudRate(atoi(argv[3]));
+        sensorConfiguration.dataSmoothing = false;
+        sensorConfiguration.dragPointRemoval = false;
+        sensorConfiguration.intensity = true;
+        sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
+
+        mechaspin::parakeet::Pro::Driver* proDriver = new mechaspin::parakeet::Pro::Driver();
+
+        proDriver->connect(sensorConfiguration);
+
+        driver = proDriver;
+    }
+    else if (std::string("ProE").find(argv[1]) != std::string::npos)
+    {
+        if (argc != 5)
+        {
+            printMissingSensorInfo(false, true);
+
+            return -3;
+        }
+
+        mechaspin::parakeet::ProE::Driver::SensorConfiguration sensorConfiguration;
+        sensorConfiguration.ipAddress = argv[2];
+        sensorConfiguration.lidarPort = atoi(argv[3]);
+        sensorConfiguration.localPort = atoi(argv[4]);
+        sensorConfiguration.dataSmoothing = false;
+        sensorConfiguration.dragPointRemoval = false;
+        sensorConfiguration.intensity = true;
+        sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
+        sensorConfiguration.resampleFilter = true;
+
+        mechaspin::parakeet::ProE::Driver* proEDriver = new mechaspin::parakeet::ProE::Driver();
+
+        proEDriver->connect(sensorConfiguration);
+
+        driver = proEDriver;
+    }
+    else
+    {
+        printMissingSensorInfo(true, true);
+
+        return -4;
     }
 
     std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
 
-    mechaspin::parakeet::Driver::SensorConfiguration sensorConfiguration;
-    sensorConfiguration.comPort = argv[1];
-    sensorConfiguration.baudRate = mechaspin::parakeet::BaudRate(atoi(argv[2]));
-    sensorConfiguration.dataSmoothing = false;
-    sensorConfiguration.dragPointRemoval = false;
-    sensorConfiguration.intensity = true;
-    sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
-
     try
     {
-        startAndRunSensor(sensorConfiguration);
+        startAndRunSensor(driver);
     }
     catch (const std::runtime_error& error)
     {
         std::cout << "The following exception occured when running the parakeet driver: " << error.what() << std::endl;
     }
+
+    delete driver;
 
     return 0;
 }

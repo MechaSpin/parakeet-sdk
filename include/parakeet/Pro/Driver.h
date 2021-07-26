@@ -59,7 +59,7 @@ class Driver : public mechaspin::parakeet::Driver
         /// \brief A constructor responsible for intializing default variable states
         Driver();
 
-        /// \brief A deconstructor responsible for shutting down a existing serial port connection
+        /// \brief A deconstructor responsible for shutting down any existing connections
         ~Driver();
 
         /// \brief Attempt connection to a Parakeet sensor through a serial port

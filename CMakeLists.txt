@@ -8,6 +8,7 @@ set(PARAKEET_HEADER_ROOT ${PARAKEET_HEADER_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/BaudRate.h
 	${PARAKEET_HEADER_ROOT}/Driver.h
+	${PARAKEET_HEADER_ROOT}/EthernetPort.h
 	${PARAKEET_HEADER_ROOT}/macros.h
 	${PARAKEET_HEADER_ROOT}/PointPolar.h
 	${PARAKEET_HEADER_ROOT}/PointXY.h
@@ -22,13 +23,16 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponseParser.h
 	${PARAKEET_HEADER_ROOT}/internal/SerialPortHelper.h
 	${PARAKEET_HEADER_ROOT}/Pro/Driver.h
+	${PARAKEET_HEADER_ROOT}/ProE/Driver.h
+	${PARAKEET_HEADER_ROOT}/ProE/internal/Parser.h
 )
 
 set(PARAKEET_SOURCE_ROOT_OUTSIDE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(PARAKEET_SOURCE_ROOT ${PARAKEET_SOURCE_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/BaudRate.cpp
-	${PARAKEET_HEADER_ROOT}/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/EthernetPort.cpp
 	${PARAKEET_SOURCE_ROOT}/PointPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/PointXY.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataPolar.cpp
@@ -42,6 +46,8 @@ set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/internal/SensorResponseParser.cpp
 	${PARAKEET_SOURCE_ROOT}/internal/SerialPortHelper.cpp
 	${PARAKEET_SOURCE_ROOT}/Pro/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/ProE/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/ProE/internal/Parser.cpp
 )
 
 include(CMakePackageConfigHelpers)
