@@ -80,10 +80,6 @@ namespace parakeet
 
 			memcpy(buffer + sizeof(CmdHeader), message.c_str(), hdr->len);
 
-			int n = sizeof(CmdHeader);
-			unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
-			pcrc[0] = stm32crc((unsigned int*)(buffer + 0), hdr->len / 4 + 2);
-
 			sockaddr_in to;
 			to.sin_family = AF_INET;
 			inet_pton(AF_INET, ethernetConnection.ipAddress.c_str(), &to.sin_addr.s_addr);
@@ -146,35 +142,6 @@ namespace parakeet
 	bool EthernetPort::isConnected()
 	{
 		return ethernetConnection.socket != 0;
-	}
-
-	unsigned int EthernetPort::stm32crc(unsigned int* ptr, unsigned int len)
-	{
-		unsigned int xbit, data;
-		unsigned int crc32 = 0xFFFFFFFF;
-		const unsigned int polynomial = 0x04c11db7;
-
-		for (unsigned int i = 0; i < len; i++)
-		{
-			xbit = 1 << 31;
-			data = ptr[i];
-			for (unsigned int bits = 0; bits < 32; bits++)
-			{
-				if (crc32 & 0x80000000)
-				{
-					crc32 <<= 1;
-					crc32 ^= polynomial;
-				}
-				else
-					crc32 <<= 1;
-
-				if (data & xbit)
-					crc32 ^= polynomial;
-
-				xbit >>= 1;
-			}
-		}
-		return crc32;
 	}
 }
 }

@@ -26,6 +26,8 @@ class Parser
 			bool withIntensity;
 			bool doDragPointRemoval;
 			bool doDataSmoothing;
+
+			uint32_t value;
 		};
 
 		struct LidarPoint
@@ -76,7 +78,7 @@ class Parser
 
 			std::vector<LidarPoint> lidarPoints;
 
-			uint32_t checksum;
+			uint16_t checksum;
 		};
 
 		void parseHeader();
@@ -95,6 +97,8 @@ class Parser
 		void parseChecksum();
 
 		int parseLidarDataFromBuffer();
+
+		bool doesChecksumMatch();
 
 		bool isLidarMessage();
 		bool isLidarResponse();

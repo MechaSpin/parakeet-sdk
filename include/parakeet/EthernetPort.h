@@ -47,8 +47,6 @@ private:
 		int localPort;
 	};
 
-	unsigned int stm32crc(unsigned int* ptr, unsigned int len);
-
 	EthernetConnection ethernetConnection;
 
 	#if defined(_WIN32)
