@@ -4,8 +4,8 @@
 
 #include <iostream>
 
-#include <parakeet/ProE/Driver.h>
 #include <parakeet/Pro/Driver.h>
+#include <parakeet/ProE/Driver.h>
 #include <parakeet/util.h>
 
 const char versionNumber[] = "1.1.0";

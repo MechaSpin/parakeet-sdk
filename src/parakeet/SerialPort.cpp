@@ -6,10 +6,28 @@
 
 #include <thread>
 
+#if defined(_WIN32)
+    #include <windows.h>
+#elif defined(__linux) || defined(linux) || defined(__linux__)
+    #include <fcntl.h>
+    #include <errno.h>
+    #include <termios.h>
+    #include <unistd.h>
+    #include <string.h>
+    #include "internal/SerialPortHelper.h"
+#endif
+
+
 namespace mechaspin
 {
 namespace parakeet
 {
+    #if defined(_WIN32)
+        HANDLE hPort = 0;
+    #elif defined(__linux) || defined(linux) || defined(__linux__)
+        int hPort = 0;
+    #endif
+
     bool SerialPort::isConnected() const
     {
         return hPort != 0;

@@ -6,11 +6,29 @@
 
 #include <iostream>
 
+#if defined(_WIN32)
+#include <WS2tcpip.h>
+#include <winsock2.h>
+
+#pragma comment(lib, "ws2_32.lib")
+#elif defined(__linux) || defined(linux) || defined(__linux__)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
+
 namespace mechaspin
 {
 namespace parakeet
 {
 	const int MAX_IP_LENGTH = 200;
+
+	#if defined(_WIN32)
+		WSADATA wsaData;
+	#endif
 
 	EthernetPort::EthernetPort()
 	{
