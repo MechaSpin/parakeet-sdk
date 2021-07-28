@@ -15,16 +15,6 @@ namespace parakeet
         this->intensity = intensity;
     }
 
-    double PointXY::getX() const
-    {
-        return getX_mm();
-    }
-
-    double PointXY::getY() const
-    {
-        return getY_mm();
-    }
-
     double PointXY::getX_mm() const
     {
         return x_mm;

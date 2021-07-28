@@ -15,19 +15,9 @@ namespace parakeet
         this->intensity = intensity;
     }
 
-    double PointPolar::getRange() const
-    {
-        return getRange_mm();
-    }
-
     double PointPolar::getRange_mm() const
     {
         return range_mm;
-    }
-
-    double PointPolar::getAngleInDegrees() const
-    {
-        return getAngle_deg();
     }
 
     double PointPolar::getAngle_deg() const
