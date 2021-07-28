@@ -59,6 +59,9 @@ void startAndRunSensor(mechaspin::parakeet::Driver* parakeetSensorDriver)
 {
     parakeetSensorDriver->registerScanCallback(onScanComplete);
 
+    mechaspin::parakeet::Pro::Driver* proDriver = dynamic_cast<mechaspin::parakeet::Pro::Driver*>(parakeetSensorDriver);
+    mechaspin::parakeet::ProE::Driver* proEDriver = dynamic_cast<mechaspin::parakeet::ProE::Driver*>(parakeetSensorDriver);
+
     std::cout << "Starting driver." << std::endl;
 
     parakeetSensorDriver->start();
@@ -80,7 +83,15 @@ void startAndRunSensor(mechaspin::parakeet::Driver* parakeetSensorDriver)
             std::cout << "Drag point enabled: " << parakeetSensorDriver->isDragPointRemovalEnabled() << std::endl;
             std::cout << "Data smoothing enabled: " << parakeetSensorDriver->isDataSmoothingEnabled() << std::endl;
             std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver->getScanningFrequency_Hz() << std::endl;
-            //std::cout << "Baud Rate: " << parakeetSensorDriver->getBaudRate().getValue() << std::endl;
+
+            if(proDriver)
+            {
+                std::cout << "Baud Rate: " << proDriver->getBaudRate().getValue() << std::endl;
+            }
+            if(proEDriver)
+            {
+                std::cout << "Resample Filter: " << proEDriver->isResampleFilterEnabled() << std::endl;
+            }
             break;
         case 'z':
         {
@@ -192,7 +203,7 @@ int main(int argc, char* argv[])
         sensorConfiguration.dataSmoothing = false;
         sensorConfiguration.dragPointRemoval = false;
         sensorConfiguration.intensity = true;
-        sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
+        sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_15Hz;
         sensorConfiguration.resampleFilter = true;
 
         mechaspin::parakeet::ProE::Driver* proEDriver = new mechaspin::parakeet::ProE::Driver();
