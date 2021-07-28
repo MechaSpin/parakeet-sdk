@@ -82,22 +82,6 @@ namespace Pro
         open();
     }
 
-    bool Driver::connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
-    {
-        SensorConfiguration paramConfiguration(comPort, baudRate, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
-        
-        try
-        {
-            connect(paramConfiguration);
-        }
-        catch (const std::runtime_error&)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
     void Driver::open()
     {
         if (serialPort.open(sensorConfiguration.comPort.c_str(), sensorConfiguration.baudRate))

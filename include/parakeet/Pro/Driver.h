@@ -66,16 +66,6 @@ class Driver : public mechaspin::parakeet::Driver
         /// \param[in] sensorConfiguration - Sensor settings and serial port information
         void connect(const SensorConfiguration& sensorConfiguration);
 
-        /// \brief Attempt connection to a Parakeet sensor through a serial port
-        /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
-        /// \param[in] baudRate - The baud rate the sensor is currently set to. Using BaudRates::Auto will try to automatically determine the baud rate.
-        /// \param[in] intensity - Should the sensor return intensity data
-        /// \param[in] scanningFrequency_Hz - The speed which the sensor should be spinning at
-        /// \param[in] dataSmoothing - Should data smoothing be enabled
-        /// \param[in] dragPointRemoval - Should drag point removal be enabled
-        /// \returns True if connection was successful, false otherwise
-        PARAKEET_DEPRECATED(bool connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval));
-
         /// \brief Start the Driver's processing thread
         void start();
 
