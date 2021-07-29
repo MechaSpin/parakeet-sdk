@@ -14,7 +14,7 @@
     #include <termios.h>
     #include <unistd.h>
     #include <string.h>
-    #include "internal/SerialPortHelper.h"
+    #include "parakeet/internal/SerialPortHelper.h"
 #endif
 
 
