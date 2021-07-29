@@ -32,13 +32,15 @@ namespace parakeet
 
 	EthernetPort::EthernetPort()
 	{
-		#if defined(_WIN32)
-			WSAStartup(MAKEWORD(2, 2), &wsaData);
-		#endif
+
 	}
 
 	bool EthernetPort::open(const char* ipAddress, int lidarPort, int localPort)
 	{
+		#if defined(_WIN32)
+			WSAStartup(MAKEWORD(2, 2), &wsaData);
+		#endif
+
 		ethernetConnection.socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
 		if (ethernetConnection.socket == -1)
@@ -69,6 +71,7 @@ namespace parakeet
 		{
 			#if defined(_WIN32)
 				closesocket(ethernetConnection.socket);
+				WSACleanup();
 			#elif defined(__linux) || defined(linux) || defined(__linux__)
 				::close(ethernetConnection.socket);
 			#endif
@@ -88,7 +91,7 @@ namespace parakeet
 	{
 		if (isConnected())
 		{
-			char buffer[2048];
+			char buffer[2048] = { 0 };
 			CmdHeader* hdr = (CmdHeader*)buffer;
 			hdr->sign = 0x484C;
 			hdr->cmd = 0x0043;
@@ -97,6 +100,10 @@ namespace parakeet
 			hdr->len = ((static_cast<short>(message.length()) + 3) >> 2) * 4;
 
 			memcpy(buffer + sizeof(CmdHeader), message.c_str(), hdr->len);
+
+			//Add checksum to end of message
+			unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
+			pcrc[0] = stm32crc((unsigned int*)(buffer + 0), hdr->len / 4 + 2);
 
 			sockaddr_in to;
 			to.sin_family = AF_INET;
@@ -139,12 +146,14 @@ namespace parakeet
 
 				if (charsRead == -1)
 				{
+					/*
 					#if defined(_WIN32)
 						auto lastError = WSAGetLastError();
                         std::cout << "Oh dear, something went wrong with read()! " << lastError << strerror(lastError) << std::endl;
 					#elif defined(__linux) || defined(linux) || defined(__linux__)
 						std::cout << "Oh dear, something went wrong with read()!" << strerror(errno) << std::endl;
 					#endif
+					*/
 					return 0;
 				}
 				else
@@ -155,6 +164,61 @@ namespace parakeet
 		}
 
 		return 0;
+	}
+
+	bool EthernetPort::sendMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout)
+	{
+		auto startTime = std::chrono::system_clock::now();
+
+		write(message);
+
+		while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count() < timeout.count())
+		{
+			unsigned char buffer[1000];
+			int charsRead = read(buffer, 0, 1000);
+
+			if (charsRead != 0)
+			{
+				std::string stringForm((char*)buffer, charsRead);
+				if (stringForm.rfind(response) != std::string::npos)
+				{
+					return true;
+				}
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+
+		return false;
+	}
+
+	unsigned int EthernetPort::stm32crc(unsigned int* ptr, unsigned int len)
+	{
+		unsigned int xbit, data;
+		unsigned int crc32 = 0xFFFFFFFF;
+		const unsigned int polynomial = 0x04c11db7;
+
+		for (unsigned int i = 0; i < len; i++)
+		{
+			xbit = 1 << 31;
+			data = ptr[i];
+			for (unsigned int bits = 0; bits < 32; bits++)
+			{
+				if (crc32 & 0x80000000)
+				{
+					crc32 <<= 1;
+					crc32 ^= polynomial;
+				}
+				else
+					crc32 <<= 1;
+
+				if (data & xbit)
+					crc32 ^= polynomial;
+
+				xbit >>= 1;
+			}
+		}
+		return crc32;
 	}
 
 	bool EthernetPort::isConnected()

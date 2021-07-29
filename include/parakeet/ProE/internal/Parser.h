@@ -55,6 +55,8 @@ class Parser
 
 		int parseSensorBuffer(int length, unsigned char* buf);
 
+		void reset();
+
 	private:
 		struct BufferData
 		{
@@ -102,6 +104,7 @@ class Parser
 
 		bool isLidarMessage();
 		bool isLidarResponse();
+		bool isAlarmMessage();
 
 		int getTotalPointsOfAllPartialScans();
 
@@ -113,6 +116,10 @@ class Parser
 		std::shared_ptr<PartialLidarMessage> currentLidarMessage;
 		std::vector<std::shared_ptr<PartialLidarMessage>> partialSectorScanDataList;
 		BufferData bufferData;
+
+		int firstTimestamp;
+		int lastTimestamp;
+		int timestampOverlapCount;
 
 		std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback;
 };
