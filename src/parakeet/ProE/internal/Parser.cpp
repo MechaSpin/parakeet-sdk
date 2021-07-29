@@ -8,6 +8,8 @@
 #include <cstdint>
 
 #include <iostream>
+#include <fstream>
+#include <chrono>
 
 namespace mechaspin
 {
@@ -17,8 +19,12 @@ namespace ProE
 {
 namespace internal
 {
+    const uint32_t FIRST_TIMESTAMP_NULL_VALUE = -1;
+    const uint32_t TIMESTAMP_RESET_VALUE = 25565;
+
     uint16_t LIDAR_MESSAGE_HEADER = 0xFAC7;
     uint16_t LIDAR_RESPONSE_HEADER = 0x484C;
+    uint16_t ALARM_MESSAGE_HEADER = 0xCECE;
 
     uint8_t BUFFER_POS_HEADER = 0;
     uint8_t BUFFER_POS_TOTAL_POINTS = 2;
@@ -39,6 +45,13 @@ namespace internal
     Parser::Parser(std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback)
     {
         this->onCompleteLidarMessageCallback = onCompleteLidarMessageCallback;
+        reset();
+    }
+
+    void Parser::reset()
+    {
+        timestampOverlapCount = 0;
+        firstTimestamp = FIRST_TIMESTAMP_NULL_VALUE;
     }
 
     void Parser::parseHeader()
@@ -83,7 +96,23 @@ namespace internal
 
     void Parser::parseTimestamp()
     {
-        memcpy(&currentLidarMessage->timestamp, bufferData.buffer + BUFFER_POS_TIMESTAMP, sizeof(currentLidarMessage->timestamp));
+        uint32_t timestamp;
+        memcpy(&timestamp, bufferData.buffer + BUFFER_POS_TIMESTAMP, sizeof(timestamp));
+
+        if (firstTimestamp == FIRST_TIMESTAMP_NULL_VALUE)
+        {
+            firstTimestamp = timestamp;
+            lastTimestamp = timestamp;
+        }
+
+        if (lastTimestamp > timestamp)
+        {
+            timestampOverlapCount++;
+        }
+
+        lastTimestamp = timestamp;
+
+        currentLidarMessage->timestamp = firstTimestamp + (TIMESTAMP_RESET_VALUE * timestampOverlapCount) + timestamp;
     }
 
     void Parser::parseDeviceNumber()
@@ -94,10 +123,10 @@ namespace internal
     void Parser::parsePoints()
     {
         uint16_t BUFFER_POS_DISTANCES = BUFFER_POS_POINT_DATA;
-        uint16_t BUFFER_POS_RELATIVE_START_ANGLES = BUFFER_POS_DISTANCES + (currentLidarMessage->numPointsInSector * SIZE_OF_DISTANCE);
-        uint16_t BUFFER_POS_INTENSITY = BUFFER_POS_RELATIVE_START_ANGLES + (currentLidarMessage->numPointsInSector * SIZE_OF_RELATIVE_START_ANGLE);
+        uint16_t BUFFER_POS_RELATIVE_START_ANGLES = BUFFER_POS_DISTANCES + (currentLidarMessage->numPoints * SIZE_OF_DISTANCE);
+        uint16_t BUFFER_POS_INTENSITY = BUFFER_POS_RELATIVE_START_ANGLES + (currentLidarMessage->numPoints * SIZE_OF_RELATIVE_START_ANGLE);
 
-        for (uint8_t i = 0; i < currentLidarMessage->numPointsInSector; i++)
+        for (uint8_t i = 0; i < currentLidarMessage->numPoints; i++)
         {
             LidarPoint lidarPoint;
 
@@ -123,7 +152,7 @@ namespace internal
 
     void Parser::parseChecksum()
     {
-        uint16_t BUFFER_POS_CHECKSUM = BUFFER_POS_POINT_DATA + (SIZE_OF_LIDAR_POINT * currentLidarMessage->numPointsInSector);
+        uint16_t BUFFER_POS_CHECKSUM = BUFFER_POS_POINT_DATA + (SIZE_OF_LIDAR_POINT * currentLidarMessage->numPoints);
 
         memcpy(&currentLidarMessage->checksum, bufferData.buffer + BUFFER_POS_CHECKSUM, sizeof(currentLidarMessage->checksum));
     }
@@ -174,8 +203,6 @@ namespace internal
             newChecksum += lidarPoint.intensity;
         }
 
-        //newChecksum = (newChecksum >> 8) | (newChecksum << 8);
-
         return newChecksum == currentLidarMessage->checksum;
     }
 
@@ -216,7 +243,7 @@ namespace internal
 
         CompleteLidarMessage* lidarMessage = new CompleteLidarMessage();
 
-        lidarMessage->totalPoints = firstMessage->numPoints;
+        lidarMessage->totalPoints = firstMessage->numPointsInSector;
         lidarMessage->endAngle = firstMessage->deviceNumber;
         lidarMessage->startAngle = firstMessage->startAngle / 1000;
         lidarMessage->endAngle = firstMessage->endAngle / 1000;
@@ -269,6 +296,11 @@ namespace internal
         return header == LIDAR_RESPONSE_HEADER;
     }
 
+    bool Parser::isAlarmMessage()
+    {
+        return header == ALARM_MESSAGE_HEADER;
+    }
+
     int Parser::parseSensorBuffer(int length, unsigned char* buf)
     {
         bufferData.length = length;
@@ -282,16 +314,22 @@ namespace internal
         }
         else if (isLidarResponse())
         {
+            /*
             for (int i = 0; i < length; i++)
             {
                 std::cout << buf[i];
             }
             std::cout << std::endl;
+            */
             return length;
+        }
+        else if (isAlarmMessage())
+        {
+            throw std::runtime_error("An alarm has been triggered");
         }
         else
         {
-            std::cout << "Failure to parse data from buffer" << std::endl;
+            //std::cout << "Failure to parse data from buffer" << std::endl;
             return length;
         }
     }

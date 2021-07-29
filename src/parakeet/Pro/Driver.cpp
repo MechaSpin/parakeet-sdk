@@ -68,6 +68,8 @@ namespace Pro
     Driver::~Driver()
     {
         close();
+
+        delete serialPortDataBuffer;
     }
 
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
@@ -153,11 +155,7 @@ namespace Pro
 
     void Driver::enableDataSmoothing(bool enable)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify data smoothing until connected." << std::endl;
-            return;
-        }
+        throwExceptionIfNotConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
 

@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <functional>
 
+#include <mutex>
+
 namespace mechaspin
 {
 namespace parakeet
@@ -122,12 +124,15 @@ class Driver : public mechaspin::parakeet::Driver
 
         void onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage);
 
+        bool sendMessageWaitForResponseOrTimeout(const std::string& message);
+
         unsigned char* ethernetPortDataBuffer;
         unsigned int ethernetPortDataBufferLength;
 
         SensorConfiguration sensorConfiguration;
         EthernetPort ethernetPort;
         internal::Parser parser;
+        std::mutex readWriteMutex;
 };
 }
 }

@@ -4,7 +4,7 @@
 
 #include <parakeet/ProE/Driver.h>
 
-#include <parakeet/exceptions/UnableToDetermineBaudRateException.h>
+#include <parakeet/exceptions/NoResponseFromSensorException.h>
 #include <parakeet/exceptions/UnableToOpenPortException.h>
 
 namespace mechaspin
@@ -97,6 +97,8 @@ namespace ProE
     Driver::~Driver()
     {
         close();
+
+        delete ethernetPortDataBuffer;
     }
 
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
@@ -110,7 +112,7 @@ namespace ProE
     {
         if (ethernetPort.open(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.lidarPort, sensorConfiguration.localPort))
         {
-            ethernetPort.write(CW_STOP_ROTATING);
+            sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING);
         }
         else
         {
@@ -129,7 +131,7 @@ namespace ProE
     {
         ethernetPortDataBufferLength = 0;
 
-        ethernetPort.write(CW_START_NORMALLY);
+        parser.reset();
 
         enableIntensityData(sensorConfiguration.intensity);
         enableDataSmoothing(sensorConfiguration.dataSmoothing);
@@ -137,12 +139,17 @@ namespace ProE
         setScanningFrequency_Hz(sensorConfiguration.scanningFrequency_Hz);
         enableResampleFilter(sensorConfiguration.resampleFilter);
 
+        if (!sendMessageWaitForResponseOrTimeout(CW_START_NORMALLY))
+        {
+            throw exceptions::NoResponseFromSensorException();
+        }
+
         mechaspin::parakeet::Driver::start();
     }
 
     void Driver::stop()
     {
-        ethernetPort.write(CW_STOP_ROTATING);
+        sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING);
 
         mechaspin::parakeet::Driver::stop();
     }
@@ -151,7 +158,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        ethernetPort.write(SW_SET_DATA_SMOOTHING(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_DATA_SMOOTHING(enable));
 
         sensorConfiguration.dataSmoothing = enable;
     }
@@ -160,7 +167,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        ethernetPort.write(SW_SET_DRAG_POINT_REMOVAL(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_DRAG_POINT_REMOVAL(enable));
 
         sensorConfiguration.dragPointRemoval = enable;
     }
@@ -174,7 +181,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        ethernetPort.write(SW_SET_RESAMPLE_FILTER(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_RESAMPLE_FILTER(enable));
 
         sensorConfiguration.resampleFilter = enable;
     }
@@ -183,7 +190,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        ethernetPort.write(SW_SET_SPEED(Hz * 60));
+        sendMessageWaitForResponseOrTimeout(SW_SET_SPEED(Hz * 60));
 
         sensorConfiguration.scanningFrequency_Hz = Hz;
     }
@@ -228,13 +235,14 @@ namespace ProE
             return;
         }
 
-        int charsRead = ethernetPort.read(ethernetPortDataBuffer, ethernetPortDataBufferLength, ETHERNET_MESSAGE_DATA_BUFFER_SIZE); 
+        readWriteMutex.lock();
+
+        int charsRead = ethernetPort.read(ethernetPortDataBuffer, ethernetPortDataBufferLength, ETHERNET_MESSAGE_DATA_BUFFER_SIZE);
+
+        readWriteMutex.unlock();
         
         if (charsRead == 0)
         {
-            std::cout << "Requesting data from sensor" << std::endl;
-            ethernetPort.write(CW_REQUEST_OUTPUT_TO_SCAN_THE_CLOUD_POINT);
-
             return;
         }
 
@@ -270,6 +278,17 @@ namespace ProE
         onScanDataReceived(scanData);
 
         delete lidarMessage;
+    }
+
+    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message)
+    {
+        readWriteMutex.lock();
+
+        bool state = ethernetPort.sendMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(5000));
+
+        readWriteMutex.unlock();
+
+        return state;
     }
 }
 }

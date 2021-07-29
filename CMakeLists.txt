@@ -16,6 +16,7 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/ScanDataXY.h
 	${PARAKEET_HEADER_ROOT}/SerialPort.h
 	${PARAKEET_HEADER_ROOT}/util.h
+	${PARAKEET_HEADER_ROOT}/exceptions/NoResponseFromSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/NotConnectedToSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToDetermineBaudRateException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToOpenPortException.h
@@ -39,6 +40,7 @@ set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/ScanDataXY.cpp
 	${PARAKEET_SOURCE_ROOT}/SerialPort.cpp
 	${PARAKEET_SOURCE_ROOT}/util.cpp
+	${PARAKEET_SOURCE_ROOT}/exceptions/NoResponseFromSensorException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/NotConnectedToSensorException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToDetermineBaudRateException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToOpenPortException.cpp

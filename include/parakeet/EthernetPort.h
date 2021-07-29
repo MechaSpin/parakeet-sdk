@@ -7,6 +7,8 @@
 
 #include <string> 
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 namespace mechaspin
 {
@@ -23,6 +25,8 @@ public:
 	int read(unsigned char* buffer, int currentLength, int bufferSize);
 	void write(const std::string& message);
 
+	bool sendMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout);
+
 	bool isConnected();
 private:
 	struct EthernetConnection
@@ -32,6 +36,8 @@ private:
 		int lidarPort;
 		int localPort;
 	};
+
+	unsigned int stm32crc(unsigned int* ptr, unsigned int len);
 
 	EthernetConnection ethernetConnection;
 };
