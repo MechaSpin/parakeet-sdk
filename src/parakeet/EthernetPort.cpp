@@ -172,8 +172,18 @@ namespace parakeet
 
 		write(message);
 
+		long long secondsPast = 0;
+
 		while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count() < timeout.count())
 		{
+			auto totalSecondsPast = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - startTime).count();
+			if (totalSecondsPast != secondsPast)
+			{
+				secondsPast = totalSecondsPast;
+
+				write(message);
+			}
+
 			unsigned char buffer[1000];
 			int charsRead = read(buffer, 0, 1000);
 

@@ -14,6 +14,9 @@ namespace parakeet
 namespace ProE
 {
     const int ETHERNET_MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
+    const int START_TIMEOUT_MS = 10000;
+    const int MESSAGE_TIMEOUT_MS = 2000;
+    const int STOP_TIMEOUT_MS = 1000;
 
     const std::string CW_STOP_ROTATING = "LSTOPH";
     const std::string CW_START_NORMALLY = "LSTARH";
@@ -112,7 +115,7 @@ namespace ProE
     {
         if (ethernetPort.open(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.lidarPort, sensorConfiguration.localPort))
         {
-            sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING);
+            sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING, STOP_TIMEOUT_MS);
         }
         else
         {
@@ -139,7 +142,7 @@ namespace ProE
         setScanningFrequency_Hz(sensorConfiguration.scanningFrequency_Hz);
         enableResampleFilter(sensorConfiguration.resampleFilter);
 
-        if (!sendMessageWaitForResponseOrTimeout(CW_START_NORMALLY))
+        if (!sendMessageWaitForResponseOrTimeout(CW_START_NORMALLY, START_TIMEOUT_MS))
         {
             throw exceptions::NoResponseFromSensorException();
         }
@@ -149,7 +152,7 @@ namespace ProE
 
     void Driver::stop()
     {
-        sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING);
+        sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING, STOP_TIMEOUT_MS);
 
         mechaspin::parakeet::Driver::stop();
     }
@@ -158,7 +161,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        sendMessageWaitForResponseOrTimeout(SW_SET_DATA_SMOOTHING(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_DATA_SMOOTHING(enable), MESSAGE_TIMEOUT_MS);
 
         sensorConfiguration.dataSmoothing = enable;
     }
@@ -167,7 +170,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        sendMessageWaitForResponseOrTimeout(SW_SET_DRAG_POINT_REMOVAL(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_DRAG_POINT_REMOVAL(enable), MESSAGE_TIMEOUT_MS);
 
         sensorConfiguration.dragPointRemoval = enable;
     }
@@ -181,7 +184,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        sendMessageWaitForResponseOrTimeout(SW_SET_RESAMPLE_FILTER(enable));
+        sendMessageWaitForResponseOrTimeout(SW_SET_RESAMPLE_FILTER(enable), MESSAGE_TIMEOUT_MS);
 
         sensorConfiguration.resampleFilter = enable;
     }
@@ -190,7 +193,7 @@ namespace ProE
     {
         throwExceptionIfNotConnected();
 
-        sendMessageWaitForResponseOrTimeout(SW_SET_SPEED(Hz * 60));
+        sendMessageWaitForResponseOrTimeout(SW_SET_SPEED(Hz * 60), MESSAGE_TIMEOUT_MS);
 
         sensorConfiguration.scanningFrequency_Hz = Hz;
     }
@@ -264,7 +267,7 @@ namespace ProE
 
     void Driver::onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage)
     {
-        ScanData* scanData = new ScanData();
+        ScanData* scanData = new ScanData(lidarMessage->timestamp);
         scanData->count = lidarMessage->totalPoints;
         scanData->startAngle_deg = lidarMessage->startAngle;
         scanData->endAngle_deg = lidarMessage->endAngle;
@@ -280,11 +283,11 @@ namespace ProE
         delete lidarMessage;
     }
 
-    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message)
+    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout)
     {
         readWriteMutex.lock();
 
-        bool state = ethernetPort.sendMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(5000));
+        bool state = ethernetPort.sendMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(millisecondsTilTimeout));
 
         readWriteMutex.unlock();
 

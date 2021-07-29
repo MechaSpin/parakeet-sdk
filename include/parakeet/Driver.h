@@ -81,12 +81,24 @@ class Driver
         static const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;          // Arbitrary size
         struct ScanData
         {
+            ScanData()
+            {
+                this->timestamp = std::chrono::system_clock::now();
+            }
+
+            ScanData(const std::chrono::system_clock::time_point& timestamp)
+            {
+                this->timestamp = timestamp;
+            }
+
             double startAngle_deg;
             double endAngle_deg;
             unsigned short count;
             unsigned short reserved;
             unsigned short dist_mm[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
             unsigned char intensity[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
+
+            std::chrono::system_clock::time_point timestamp;
         };
 
         struct DataPoint

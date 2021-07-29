@@ -93,11 +93,6 @@ namespace parakeet
     
     void Driver::onScanDataReceived(ScanData* scanData)
     {
-        if(pointHoldingList.size() == 0)
-        {
-            timeOfFirstPoint = std::chrono::system_clock::now();
-        }
-
         double anglePerPoint_deg = (scanData->endAngle_deg - scanData->startAngle_deg) / scanData->count;
         double deviationFrom360_deg = 1;
 
@@ -113,7 +108,7 @@ namespace parakeet
         {
             updateThreadFrameCount++;
 
-            ScanDataPolar scanDataPolar(pointHoldingList, timeOfFirstPoint);
+            ScanDataPolar scanDataPolar(pointHoldingList, scanData->timestamp);
 
             if (scanCallbackFunction != nullptr)
             {

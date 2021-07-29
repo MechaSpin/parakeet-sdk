@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 namespace mechaspin
 {
@@ -45,7 +46,7 @@ class Parser
 
 			LidarSensorProperties sensorPropertyFlags;
 
-			uint32_t timestamp;
+			std::chrono::system_clock::time_point timestamp;
 			uint32_t deviceNumber;
 
 			std::vector<LidarPoint> lidarPoints;
@@ -64,6 +65,12 @@ class Parser
 			unsigned char* buffer;
 		};
 
+		struct LastGeneratedTimestamp
+		{
+			bool validTimestamp;
+			std::chrono::system_clock::time_point timestamp;
+		};
+
 		struct PartialLidarMessage
 		{
 			uint16_t numPoints;
@@ -75,6 +82,7 @@ class Parser
 
 			LidarSensorProperties sensorPropertyFlags;
 
+			LastGeneratedTimestamp generatedTimestamp;
 			uint32_t timestamp;
 			uint32_t deviceNumber;
 
@@ -82,6 +90,8 @@ class Parser
 
 			uint16_t checksum;
 		};
+
+		void generateTimestamp();
 
 		void parseHeader();
 
@@ -115,11 +125,9 @@ class Parser
 		uint16_t header;
 		std::shared_ptr<PartialLidarMessage> currentLidarMessage;
 		std::vector<std::shared_ptr<PartialLidarMessage>> partialSectorScanDataList;
-		BufferData bufferData;
 
-		int firstTimestamp;
-		int lastTimestamp;
-		int timestampOverlapCount;
+		BufferData bufferData;
+		LastGeneratedTimestamp lastGeneratedTimestamp;
 
 		std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback;
 };

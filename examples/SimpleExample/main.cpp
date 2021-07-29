@@ -104,7 +104,8 @@ void startAndRunSensor(mechaspin::parakeet::Driver* parakeetSensorDriver)
             std::cout << "Min point: (" << minPoint->getRange_mm() << ", " << minPoint->getAngle_deg() << ") Intensity: " << minPoint->getIntensity() << std::endl;
             std::cout << "Max point: (" << maxPoint->getRange_mm() << ", " << maxPoint->getAngle_deg() << ") Intensity: " << maxPoint->getIntensity() << std::endl;
 
-            std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - timestamp).count() << "ms ago." << std::endl;
+            auto currentTime = std::chrono::system_clock::now();
+            std::cout << "From " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - timestamp).count() << "ms ago." << std::endl;
 
             break;
         }
