@@ -124,7 +124,7 @@ class Driver : public mechaspin::parakeet::Driver
 
         void onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage);
 
-        bool sendMessageWaitForResponseOrTimeout(const std::string& message);
+        bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout);
 
         unsigned char* ethernetPortDataBuffer;
         unsigned int ethernetPortDataBufferLength;

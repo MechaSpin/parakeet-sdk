@@ -50,8 +50,18 @@ namespace internal
 
     void Parser::reset()
     {
-        timestampOverlapCount = 0;
-        firstTimestamp = FIRST_TIMESTAMP_NULL_VALUE;
+        lastGeneratedTimestamp.validTimestamp = false;
+    }
+
+    void Parser::generateTimestamp()
+    {
+        if (lastGeneratedTimestamp.validTimestamp)
+        {
+            currentLidarMessage->generatedTimestamp = lastGeneratedTimestamp;
+        }
+
+        lastGeneratedTimestamp.validTimestamp = true;
+        lastGeneratedTimestamp.timestamp = std::chrono::system_clock::now();
     }
 
     void Parser::parseHeader()
@@ -96,23 +106,7 @@ namespace internal
 
     void Parser::parseTimestamp()
     {
-        uint32_t timestamp;
-        memcpy(&timestamp, bufferData.buffer + BUFFER_POS_TIMESTAMP, sizeof(timestamp));
-
-        if (firstTimestamp == FIRST_TIMESTAMP_NULL_VALUE)
-        {
-            firstTimestamp = timestamp;
-            lastTimestamp = timestamp;
-        }
-
-        if (lastTimestamp > timestamp)
-        {
-            timestampOverlapCount++;
-        }
-
-        lastTimestamp = timestamp;
-
-        currentLidarMessage->timestamp = firstTimestamp + (TIMESTAMP_RESET_VALUE * timestampOverlapCount) + timestamp;
+        memcpy(&currentLidarMessage->timestamp, bufferData.buffer + BUFFER_POS_TIMESTAMP, sizeof(currentLidarMessage->timestamp));
     }
 
     void Parser::parseDeviceNumber()
@@ -159,6 +153,9 @@ namespace internal
 
     void Parser::parsePartialScan()
     {
+        //We are generating the timestamp first, so that we can get the most accurate time.
+        generateTimestamp();
+
         parseNumPointsInThisPartialSector();
         parseNumPointsInSector();
         parseSectorDataOffset();
@@ -239,7 +236,19 @@ namespace internal
 
     void Parser::createAndPublishCompleteScan()
     {
+        if (partialSectorScanDataList.size() <= 0)
+        {
+            return;
+        }
+
         auto firstMessage = partialSectorScanDataList[0];
+
+        //We will not ship the information from the first revolution, as it will not have a valid timestamp.
+        if (!firstMessage->generatedTimestamp.validTimestamp)
+        {
+            partialSectorScanDataList.clear();
+            return;
+        }
 
         CompleteLidarMessage* lidarMessage = new CompleteLidarMessage();
 
@@ -247,7 +256,7 @@ namespace internal
         lidarMessage->endAngle = firstMessage->deviceNumber;
         lidarMessage->startAngle = firstMessage->startAngle / 1000;
         lidarMessage->endAngle = firstMessage->endAngle / 1000;
-        lidarMessage->timestamp = firstMessage->timestamp;
+        lidarMessage->timestamp = firstMessage->generatedTimestamp.timestamp;
 
         lidarMessage->sensorPropertyFlags = firstMessage->sensorPropertyFlags;
 
