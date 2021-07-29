@@ -336,7 +336,8 @@ namespace Pro
 
                 ScanData* data = new ScanData;
                 data->startAngle_deg = start / 10.0;
-                data->endAngle_deg = (static_cast<double>(data->startAngle_deg) + 360) / 10.0;
+                data->endAngle_deg = data->startAngle_deg + 36;
+
                 data->count = cnt;
 
                 unsigned short sum = start + cnt;
@@ -386,11 +387,12 @@ namespace Pro
                 }
 
                 ScanData* data = new ScanData;
-                data->startAngle_deg = start;
-                data->endAngle_deg = (static_cast<double>(data->startAngle_deg) + 360) / 10.0;
-                data->count = cnt;
-                unsigned short sum = start + cnt;
+                data->startAngle_deg = start / 10.0;
+                data->endAngle_deg = data->startAngle_deg + 36;
 
+                data->count = cnt;
+
+                unsigned short sum = start + cnt;
                 unsigned char* pdata = buf + idx + 6;
                 for (int i = 0; i < cnt; i++)
                 {
