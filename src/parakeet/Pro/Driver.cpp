@@ -7,6 +7,8 @@
 #include <parakeet/exceptions/UnableToDetermineBaudRateException.h>
 #include <parakeet/exceptions/UnableToOpenPortException.h>
 
+#include <cstring>
+
 namespace mechaspin
 {
 namespace parakeet
