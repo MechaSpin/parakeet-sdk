@@ -9,17 +9,17 @@
 
 namespace mechaspin
 {
-    namespace parakeet
-    {
-        namespace exceptions
-        {
-            class NoResponseFromSensorException : public std::runtime_error
-            {
-            public:
-                NoResponseFromSensorException();
-            };
-        }
-    }
+namespace parakeet
+{
+namespace exceptions
+{
+class NoResponseFromSensorException : public std::runtime_error
+{
+    public:
+        NoResponseFromSensorException();
+};
+}
+}
 }
 
 #endif
