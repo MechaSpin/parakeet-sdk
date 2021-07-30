@@ -116,7 +116,6 @@ class Driver : public mechaspin::parakeet::Driver
         /// \brief Gets the state of the resample filter
         /// \returns The state of the resample filter
         bool isResampleFilterEnabled();
-
     private:
         void open();
         void ethernetUpdateThreadFunction();

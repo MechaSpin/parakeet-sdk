@@ -30,11 +30,6 @@ namespace parakeet
 		WSADATA wsaData;
 	#endif
 
-	EthernetPort::EthernetPort()
-	{
-
-	}
-
 	bool EthernetPort::open(const char* ipAddress, int lidarPort, int localPort)
 	{
 		#if defined(_WIN32)
