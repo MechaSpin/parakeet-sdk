@@ -8,7 +8,7 @@
 #include <parakeet/ProE/Driver.h>
 #include <parakeet/util.h>
 
-const char versionNumber[] = "1.1.0";
+const char versionNumber[] = "2.0.0";
 
 std::shared_ptr<mechaspin::parakeet::PointPolar> minPoint;
 std::shared_ptr<mechaspin::parakeet::PointPolar> maxPoint;
