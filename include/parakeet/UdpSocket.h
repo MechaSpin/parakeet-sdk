@@ -19,35 +19,38 @@ class UdpSocket
 public:
 	UdpSocket() = default;
 
-	/// \brief Open an ethernet port for IO communication
+	/// \brief Open a UDP Socket for reading
 	/// \param[in] ipAddress - The IP Address of the device to communicate with
 	/// \param[in] srcPort - The port which this device will read messages from
 	/// \returns If opening the port was successful
-	bool open(const char* ipAddress, int dstPort);
+	bool open(const char* ipAddress, int srcPort);
 
-	/// \brief Close an ethernet port to stop IO communication
+	/// \brief Close the existing UDP Socket
 	void close();
 
-	/// \brief Read data from an open ethernet port
+	/// \brief Read data from an opened UDP socket
 	/// \param[in] buffer - The buffer in-which read data will be placed
 	/// \param[in] currentLength - The number of bytes used in the current buffer
 	/// \param[in] bufferSize - The maximum size of the buffer
 	/// \returns The number of bytes read from the stream
 	int read(unsigned char* buffer, int currentLength, int bufferSize);
 
-	/// \brief Write data to an open ethernet port
+	/// \brief Write data to a specific destination
+	/// \param[in] ipAddress - The IP Address of the device to communicate with
 	/// \param[in] dstPort - The port which the data should be sent through
 	/// \param[in] buffer - The data which will be sent
 	/// \param[in] length - The number of bytes populated within the buffer
-	void write(unsigned short dstPort, const char* buffer, unsigned int length);
+	void write(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length);
 
 	/// \brief Send a message across the communication lines and await a specific response, timeout if the response takes too long
+	/// \param[in] ipAddress - The IP Address of the device to communicate with
+	/// \param[in] dstPort - The port which the data should be sent through
 	/// \param[in] buffer - The data which will be sent
 	/// \param[in] length - The number of bytes populated within the buffer
 	/// \param[in] response - The response we are awaiting
 	/// \param[in] timeout - How long in milliseconds until this function should be forced to return
 	/// \returns True if the response message was received
-	bool sendMessageWaitForResponseOrTimeout(unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout);
+	bool sendMessageWaitForResponseOrTimeout(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout);
 
 	/// \returns The current connection state
 	bool isConnected();
@@ -56,7 +59,7 @@ private:
 	{
 		int socket = 0;
 		std::string ipAddress;
-		int dstPort;
+		int srcPort;
 	};
 
 	unsigned int stm32crc(unsigned int* ptr, unsigned int len);

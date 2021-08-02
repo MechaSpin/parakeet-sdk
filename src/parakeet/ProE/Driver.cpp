@@ -320,7 +320,7 @@ namespace ProE
         unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
         pcrc[0] = calculateEndOfMessageCRC((unsigned int*)(buffer), hdr->len / 4 + 2);
 
-        return ethernetPort.sendMessageWaitForResponseOrTimeout(sensorConfiguration.dstPort, buffer, sizeof(CmdHeader) + sizeof(pcrc[0]) + hdr->len, response, timeout);
+        return ethernetPort.sendMessageWaitForResponseOrTimeout(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.dstPort, buffer, sizeof(CmdHeader) + sizeof(pcrc[0]) + hdr->len, response, timeout);
     }
 
     unsigned int Driver::calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len)
