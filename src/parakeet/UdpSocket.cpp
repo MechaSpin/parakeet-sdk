@@ -30,7 +30,7 @@ namespace parakeet
 		WSADATA wsaData;
 	#endif
 
-	bool UdpSocket::open(const char* ipAddress, int dstPort)
+	bool UdpSocket::open(const char* ipAddress, int srcPort)
 	{
 		#if defined(_WIN32)
 			WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -45,7 +45,7 @@ namespace parakeet
 
 		sockaddr_in addr;
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(dstPort);
+		addr.sin_port = htons(srcPort);
 		addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 		if (::bind(ethernetConnection.socket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
@@ -53,7 +53,7 @@ namespace parakeet
 			return false;
 		}
 
-		ethernetConnection.dstPort = dstPort;
+		ethernetConnection.srcPort = srcPort;
 		ethernetConnection.ipAddress = std::string(ipAddress);
 
 		return true;
@@ -70,20 +70,6 @@ namespace parakeet
 				::close(ethernetConnection.socket);
 			#endif
 			ethernetConnection.socket = 0;
-		}
-	}
-
-	void UdpSocket::write(unsigned short dstPort, const char* buffer, unsigned int length)
-	{
-		if (isConnected())
-		{
-			sockaddr_in to;
-			to.sin_family = AF_INET;
-			inet_pton(AF_INET, ethernetConnection.ipAddress.c_str(), &to.sin_addr.s_addr);
-
-			to.sin_port = htons(dstPort);
-
-			sendto(ethernetConnection.socket, buffer, length, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
 		}
 	}
 
@@ -136,7 +122,18 @@ namespace parakeet
 		return 0;
 	}
 
-	bool UdpSocket::sendMessageWaitForResponseOrTimeout(unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout)
+	void UdpSocket::write(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length)
+	{
+		sockaddr_in to;
+		to.sin_family = AF_INET;
+		inet_pton(AF_INET, ipAddress, &to.sin_addr.s_addr);
+
+		to.sin_port = htons(dstPort);
+
+		sendto(ethernetConnection.socket, buffer, length, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
+	}
+
+	bool UdpSocket::sendMessageWaitForResponseOrTimeout(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout)
 	{
 		if (!isConnected())
 		{
@@ -145,7 +142,7 @@ namespace parakeet
 
 		auto startTime = std::chrono::system_clock::now();
 
-		write(dstPort, buffer, length);
+		write(ipAddress, dstPort, buffer, length);
 
 		long long secondsPast = 0;
 
@@ -156,7 +153,7 @@ namespace parakeet
 			{
 				secondsPast = totalSecondsPast;
 
-				write(dstPort, buffer, length);
+				write(ipAddress, dstPort, buffer, length);
 			}
 
 			unsigned char buffer[1000];
