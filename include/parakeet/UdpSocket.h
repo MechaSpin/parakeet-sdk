@@ -14,17 +14,16 @@ namespace mechaspin
 {
 namespace parakeet
 {
-class EthernetPort
+class UdpSocket
 {
 public:
-	EthernetPort() = default;
+	UdpSocket() = default;
 
 	/// \brief Open an ethernet port for IO communication
 	/// \param[in] ipAddress - The IP Address of the device to communicate with
-	/// \param[in] lidarPort - The port that the device is sending to us on
-	/// \param[in] localPort - The port which this device will send out messages from
+	/// \param[in] srcPort - The port which this device will read messages from
 	/// \returns If opening the port was successful
-	bool open(const char* ipAddress, int lidarPort, int localPort);
+	bool open(const char* ipAddress, int dstPort);
 
 	/// \brief Close an ethernet port to stop IO communication
 	void close();
@@ -37,15 +36,18 @@ public:
 	int read(unsigned char* buffer, int currentLength, int bufferSize);
 
 	/// \brief Write data to an open ethernet port
-	/// \param[in] message - The message which will be sent
-	void write(const std::string& message);
+	/// \param[in] dstPort - The port which the data should be sent through
+	/// \param[in] buffer - The data which will be sent
+	/// \param[in] length - The number of bytes populated within the buffer
+	void write(unsigned short dstPort, const char* buffer, unsigned int length);
 
 	/// \brief Send a message across the communication lines and await a specific response, timeout if the response takes too long
-	/// \param[in] message - The message to send out
+	/// \param[in] buffer - The data which will be sent
+	/// \param[in] length - The number of bytes populated within the buffer
 	/// \param[in] response - The response we are awaiting
 	/// \param[in] timeout - How long in milliseconds until this function should be forced to return
 	/// \returns True if the response message was received
-	bool sendMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout);
+	bool sendMessageWaitForResponseOrTimeout(unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout);
 
 	/// \returns The current connection state
 	bool isConnected();
@@ -54,8 +56,7 @@ private:
 	{
 		int socket = 0;
 		std::string ipAddress;
-		int lidarPort;
-		int localPort;
+		int dstPort;
 	};
 
 	unsigned int stm32crc(unsigned int* ptr, unsigned int len);

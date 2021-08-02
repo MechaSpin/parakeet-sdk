@@ -2,7 +2,7 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#include <parakeet/EthernetPort.h>
+#include <parakeet/UdpSocket.h>
 
 #include <iostream>
 
@@ -30,7 +30,7 @@ namespace parakeet
 		WSADATA wsaData;
 	#endif
 
-	bool EthernetPort::open(const char* ipAddress, int lidarPort, int localPort)
+	bool UdpSocket::open(const char* ipAddress, int dstPort)
 	{
 		#if defined(_WIN32)
 			WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -45,7 +45,7 @@ namespace parakeet
 
 		sockaddr_in addr;
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(localPort);
+		addr.sin_port = htons(dstPort);
 		addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 		if (::bind(ethernetConnection.socket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
@@ -53,14 +53,13 @@ namespace parakeet
 			return false;
 		}
 
-		ethernetConnection.localPort = localPort;
-		ethernetConnection.lidarPort = lidarPort;
+		ethernetConnection.dstPort = dstPort;
 		ethernetConnection.ipAddress = std::string(ipAddress);
 
 		return true;
 	}
 
-	void EthernetPort::close()
+	void UdpSocket::close()
 	{
 		if (isConnected())
 		{
@@ -74,45 +73,21 @@ namespace parakeet
 		}
 	}
 
-	struct CmdHeader
-	{
-		unsigned short sign;
-		unsigned short cmd;
-		unsigned short sn;
-		unsigned short len;
-	};
-
-	void EthernetPort::write(const std::string& message)
+	void UdpSocket::write(unsigned short dstPort, const char* buffer, unsigned int length)
 	{
 		if (isConnected())
 		{
-			char buffer[2048] = { 0 };
-			CmdHeader* hdr = (CmdHeader*)buffer;
-			hdr->sign = 0x484C;
-			hdr->cmd = 0x0043;
-			hdr->sn = rand();
-
-			hdr->len = ((static_cast<short>(message.length()) + 3) >> 2) * 4;
-
-			memcpy(buffer + sizeof(CmdHeader), message.c_str(), hdr->len);
-
-			//Add checksum to end of message
-			unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
-			pcrc[0] = stm32crc((unsigned int*)(buffer + 0), hdr->len / 4 + 2);
-
 			sockaddr_in to;
 			to.sin_family = AF_INET;
 			inet_pton(AF_INET, ethernetConnection.ipAddress.c_str(), &to.sin_addr.s_addr);
 
-			to.sin_port = htons(ethernetConnection.lidarPort);
+			to.sin_port = htons(dstPort);
 
-			int len2 = hdr->len + sizeof(CmdHeader) + 4;
-
-			sendto(ethernetConnection.socket, buffer, len2, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
+			sendto(ethernetConnection.socket, buffer, length, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
 		}
 	}
 
-	int EthernetPort::read(unsigned char* buffer, int currentLength, int bufferSize)
+	int UdpSocket::read(unsigned char* buffer, int currentLength, int bufferSize)
 	{
 		if (isConnected())
 		{
@@ -161,11 +136,16 @@ namespace parakeet
 		return 0;
 	}
 
-	bool EthernetPort::sendMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout)
+	bool UdpSocket::sendMessageWaitForResponseOrTimeout(unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout)
 	{
+		if (!isConnected())
+		{
+			return false;
+		}
+
 		auto startTime = std::chrono::system_clock::now();
 
-		write(message);
+		write(dstPort, buffer, length);
 
 		long long secondsPast = 0;
 
@@ -176,7 +156,7 @@ namespace parakeet
 			{
 				secondsPast = totalSecondsPast;
 
-				write(message);
+				write(dstPort, buffer, length);
 			}
 
 			unsigned char buffer[1000];
@@ -197,36 +177,7 @@ namespace parakeet
 		return false;
 	}
 
-	unsigned int EthernetPort::stm32crc(unsigned int* ptr, unsigned int len)
-	{
-		unsigned int xbit, data;
-		unsigned int crc32 = 0xFFFFFFFF;
-		const unsigned int polynomial = 0x04c11db7;
-
-		for (unsigned int i = 0; i < len; i++)
-		{
-			xbit = 1 << 31;
-			data = ptr[i];
-			for (unsigned int bits = 0; bits < 32; bits++)
-			{
-				if (crc32 & 0x80000000)
-				{
-					crc32 <<= 1;
-					crc32 ^= polynomial;
-				}
-				else
-					crc32 <<= 1;
-
-				if (data & xbit)
-					crc32 ^= polynomial;
-
-				xbit >>= 1;
-			}
-		}
-		return crc32;
-	}
-
-	bool EthernetPort::isConnected()
+	bool UdpSocket::isConnected()
 	{
 		return ethernetConnection.socket != 0;
 	}

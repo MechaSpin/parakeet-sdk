@@ -6,7 +6,7 @@
 #define PARAKEET_PROE_DRIVER_H
 
 #include <parakeet/Driver.h>
-#include <parakeet/EthernetPort.h>
+#include <parakeet/UdpSocket.h>
 #include <parakeet/ProE/internal/Parser.h>
 
 #include <thread>
@@ -36,11 +36,11 @@ class Driver : public mechaspin::parakeet::Driver
             /// \param[in] scanningFrequency_Hz - The speed which the sensor should be spinning at
             /// \param[in] dataSmoothing - Should data smoothing be enabled
             /// \param[in] dragPointRemoval - Should drag point removal be enabled
-            SensorConfiguration(const std::string& ipAddress, int lidarPort, int localPort, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval, bool resampleFilter)
+            SensorConfiguration(const std::string& ipAddress, int dstPort, int srcPort, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval, bool resampleFilter)
             {
                 this->ipAddress = ipAddress;
-                this->lidarPort = lidarPort;
-                this->localPort = localPort;
+                this->dstPort = dstPort;
+                this->srcPort = srcPort;
                 this->intensity = intensity;
                 this->scanningFrequency_Hz = scanningFrequency_Hz;
                 this->dataSmoothing = dataSmoothing;
@@ -49,8 +49,8 @@ class Driver : public mechaspin::parakeet::Driver
             }
 
             std::string ipAddress;
-            int lidarPort;
-            int localPort;
+            int dstPort;
+            int srcPort;
             bool intensity;
             ScanningFrequency scanningFrequency_Hz;
             bool dataSmoothing;
@@ -123,13 +123,16 @@ class Driver : public mechaspin::parakeet::Driver
 
         void onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage);
 
+        unsigned int calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len);
+
         bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout);
+        bool sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout);
 
         unsigned char* ethernetPortDataBuffer;
         unsigned int ethernetPortDataBufferLength;
 
         SensorConfiguration sensorConfiguration;
-        EthernetPort ethernetPort;
+        UdpSocket ethernetPort;
         internal::Parser parser;
         std::mutex readWriteMutex;
 };

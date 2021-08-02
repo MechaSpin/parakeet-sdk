@@ -150,7 +150,7 @@ void printMissingSensorInfo(bool parakeetPro, bool parakeetProE)
     }
     if (parakeetProE)
     {
-        std::cout << "Parakeet ProE: \"ProE IPADDRESS LIDARPORT LOCALPORT\" ie: \"192.168.0.98 6543 6668\"" << std::endl;
+        std::cout << "Parakeet ProE: \"ProE DSTIPADDRESS DSTPORT SRCPORT\" ie: \"192.168.158.98 6543 6668\"" << std::endl;
     }
 }
 
@@ -199,8 +199,8 @@ int main(int argc, char* argv[])
 
         mechaspin::parakeet::ProE::Driver::SensorConfiguration sensorConfiguration;
         sensorConfiguration.ipAddress = argv[2];
-        sensorConfiguration.lidarPort = atoi(argv[3]);
-        sensorConfiguration.localPort = atoi(argv[4]);
+        sensorConfiguration.dstPort = atoi(argv[3]);
+        sensorConfiguration.srcPort = atoi(argv[4]);
         sensorConfiguration.dataSmoothing = false;
         sensorConfiguration.dragPointRemoval = false;
         sensorConfiguration.intensity = true;
