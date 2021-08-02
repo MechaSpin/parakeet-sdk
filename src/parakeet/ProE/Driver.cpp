@@ -18,6 +18,9 @@ namespace ProE
     const int MESSAGE_TIMEOUT_MS = 2000;
     const int STOP_TIMEOUT_MS = 1000;
 
+    const unsigned short UDP_MESSAGE_SIGN = 0x484C;
+    const unsigned short UDP_MESSAGE_CMD = 0x0043;
+
     const std::string CW_STOP_ROTATING = "LSTOPH";
     const std::string CW_START_NORMALLY = "LSTARH";
     const std::string CW_STOP_ROTATING_FIX_DIST = "LMEASH";
@@ -89,6 +92,14 @@ namespace ProE
     {
         return SW_SET_RESAMPLE_FILTER_PREFIX + std::to_string((int)enable) + SW_POSTFIX;
     }
+
+    struct CmdHeader
+    {
+        unsigned short sign;
+        unsigned short cmd;
+        unsigned short sn;
+        unsigned short len;
+    };
     
     Driver::Driver() : parser(std::bind(&Driver::onCompleteLidarMessage, this, std::placeholders::_1))
     {
@@ -113,7 +124,7 @@ namespace ProE
 
     void Driver::open()
     {
-        if (ethernetPort.open(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.lidarPort, sensorConfiguration.localPort))
+        if (ethernetPort.open(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.srcPort))
         {
             sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING, STOP_TIMEOUT_MS);
         }
@@ -287,11 +298,58 @@ namespace ProE
     {
         readWriteMutex.lock();
 
-        bool state = ethernetPort.sendMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(millisecondsTilTimeout));
+        bool state = sendUdpMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(millisecondsTilTimeout));
 
         readWriteMutex.unlock();
 
         return state;
+    }
+
+    bool Driver::sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout)
+    {
+        char buffer[2048] = { 0 };
+        CmdHeader* hdr = (CmdHeader*)buffer;
+        hdr->sign = UDP_MESSAGE_SIGN;
+        hdr->cmd = UDP_MESSAGE_CMD;
+        hdr->sn = rand();
+
+        hdr->len = ((static_cast<short>(message.length()) + 3) >> 2) * 4;
+
+        memcpy(buffer + sizeof(CmdHeader), message.c_str(), message.length());
+
+        unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
+        pcrc[0] = calculateEndOfMessageCRC((unsigned int*)(buffer), hdr->len / 4 + 2);
+
+        return ethernetPort.sendMessageWaitForResponseOrTimeout(sensorConfiguration.dstPort, buffer, sizeof(CmdHeader) + sizeof(pcrc[0]) + hdr->len, response, timeout);
+    }
+
+    unsigned int Driver::calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len)
+    {
+        unsigned int xbit, data;
+        unsigned int crc32 = 0xFFFFFFFF;
+        const unsigned int polynomial = 0x04c11db7;
+
+        for (unsigned int i = 0; i < len; i++)
+        {
+            xbit = 1 << 31;
+            data = ptr[i];
+            for (unsigned int bits = 0; bits < 32; bits++)
+            {
+                if (crc32 & 0x80000000)
+                {
+                    crc32 <<= 1;
+                    crc32 ^= polynomial;
+                }
+                else
+                    crc32 <<= 1;
+
+                if (data & xbit)
+                    crc32 ^= polynomial;
+
+                xbit >>= 1;
+            }
+        }
+        return crc32;
     }
 }
 }

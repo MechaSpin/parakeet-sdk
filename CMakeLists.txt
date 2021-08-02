@@ -8,13 +8,13 @@ set(PARAKEET_HEADER_ROOT ${PARAKEET_HEADER_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/BaudRate.h
 	${PARAKEET_HEADER_ROOT}/Driver.h
-	${PARAKEET_HEADER_ROOT}/EthernetPort.h
 	${PARAKEET_HEADER_ROOT}/macros.h
 	${PARAKEET_HEADER_ROOT}/PointPolar.h
 	${PARAKEET_HEADER_ROOT}/PointXY.h
 	${PARAKEET_HEADER_ROOT}/ScanDataPolar.h
 	${PARAKEET_HEADER_ROOT}/ScanDataXY.h
 	${PARAKEET_HEADER_ROOT}/SerialPort.h
+	${PARAKEET_HEADER_ROOT}/UdpSocket.h
 	${PARAKEET_HEADER_ROOT}/util.h
 	${PARAKEET_HEADER_ROOT}/exceptions/NoResponseFromSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/NotConnectedToSensorException.h
@@ -33,12 +33,12 @@ set(PARAKEET_SOURCE_ROOT ${PARAKEET_SOURCE_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/BaudRate.cpp
 	${PARAKEET_SOURCE_ROOT}/Driver.cpp
-	${PARAKEET_SOURCE_ROOT}/EthernetPort.cpp
 	${PARAKEET_SOURCE_ROOT}/PointPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/PointXY.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataXY.cpp
 	${PARAKEET_SOURCE_ROOT}/SerialPort.cpp
+	${PARAKEET_SOURCE_ROOT}/UdpSocket.cpp
 	${PARAKEET_SOURCE_ROOT}/util.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/NoResponseFromSensorException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/NotConnectedToSensorException.cpp
