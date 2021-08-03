@@ -18,8 +18,15 @@ namespace ProE
     const int MESSAGE_TIMEOUT_MS = 2000;
     const int STOP_TIMEOUT_MS = 1000;
 
+    const int IP_ADDRESS_ARRAY_SIZE = 4;
+    const int SUBNET_MASK_ARRAY_SIZE = 4;
+    const int GATEWAY_ARRAY_SIZE = 4;
+    const int IP_ADDRESS_STRING_LENGTH = 3;
+    const int PORT_STRING_LENGTH = 5;
+
     const unsigned short UDP_MESSAGE_SIGN = 0x484C;
     const unsigned short UDP_MESSAGE_CMD = 0x0043;
+    const unsigned short UDP_MESSAGE_SET_PROPERTIES_CMD = 0x0053;
 
     const std::string CW_STOP_ROTATING = "LSTOPH";
     const std::string CW_START_NORMALLY = "LSTARH";
@@ -47,20 +54,11 @@ namespace ProE
 
     const std::string SW_POSTFIX = "H";
 
+    const char SW_SET_LIDAR_PROPERTIES_DELIMITER = ' ';
+
     const std::string SW_SET_SPEED(int speed)
     {
         return SW_SET_SPEED_PREFIX + std::to_string(speed) + SW_POSTFIX;
-    }
-    
-    const std::string SW_SET_LIDAR_PROPERTIES(const std::string& ipAddress, const std::string& subnetMask, const std::string& gateway, int port)
-    {
-        std::string delimiter = " ";
-        return SW_SET_LIDAR_PROPERTIES_PREFIX + 
-            ipAddress + delimiter +
-            subnetMask + delimiter +
-            gateway + delimiter +
-            std::to_string(port) + 
-            SW_POSTFIX;
     }
 
     const std::string SW_SET_BIAS(int bias)
@@ -93,13 +91,68 @@ namespace ProE
         return SW_SET_RESAMPLE_FILTER_PREFIX + std::to_string((int)enable) + SW_POSTFIX;
     }
 
+    std::string numberToFixedSizeString(unsigned int value, int size)
+    {
+        unsigned int uvalue = value;
+        if (value < 0)
+        {
+            uvalue = -uvalue;
+        }
+
+        std::string result;
+        while (size-- > 0)
+        {
+            result += ('0' + uvalue % 10);
+            uvalue /= 10;
+        }
+
+        if (value < 0) {
+            result += '-';
+        }
+        std::reverse(result.begin(), result.end());
+        return result;
+    }
+
+    std::string unsignedCharArrayToString(const unsigned char* charArray, int size)
+    {
+        std::string result;
+
+        for (int i = 0; i < size; i++)
+        {
+            result += numberToFixedSizeString(charArray[i], 3);
+
+            if (i != size - 1)
+            {
+                result += '.';
+            }
+        }
+
+        return result;
+    }
+
+    const std::string SW_SET_LIDAR_PROPERTIES(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
+    {
+        std::string result;
+
+        result += SW_SET_LIDAR_PROPERTIES_PREFIX;
+
+        result += unsignedCharArrayToString(ipAddress, IP_ADDRESS_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
+        result += unsignedCharArrayToString(subnetMask, SUBNET_MASK_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
+        result += unsignedCharArrayToString(gateway, GATEWAY_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
+        result += numberToFixedSizeString(port, PORT_STRING_LENGTH);
+
+        result += SW_POSTFIX;
+
+        return result;
+    }
+
     struct CmdHeader
     {
         unsigned short sign;
         unsigned short cmd;
         unsigned short sn;
         unsigned short len;
-    };
+    }; 
     
     Driver::Driver() : parser(std::bind(&Driver::onCompleteLidarMessage, this, std::placeholders::_1))
     {
@@ -209,6 +262,18 @@ namespace ProE
         sensorConfiguration.scanningFrequency_Hz = Hz;
     }
 
+    void Driver::setSensorSettings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
+    {
+        throwExceptionIfNotConnected();
+
+        sendMessageWaitForResponseOrTimeout(SW_SET_LIDAR_PROPERTIES(ipAddress, subnetMask, gateway, port), MESSAGE_TIMEOUT_MS, UDP_MESSAGE_SET_PROPERTIES_CMD);
+
+        sensorConfiguration.dstPort = port;
+        sensorConfiguration.ipAddress = unsignedCharArrayToString(ipAddress, IP_ADDRESS_ARRAY_SIZE);
+
+        close();
+    }
+
     bool Driver::isDataSmoothingEnabled()
     {
         throwExceptionIfNotConnected();
@@ -294,23 +359,28 @@ namespace ProE
         delete lidarMessage;
     }
 
-    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout)
+    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout, unsigned short cmd)
     {
         readWriteMutex.lock();
 
-        bool state = sendUdpMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(millisecondsTilTimeout));
+        bool state = sendUdpMessageWaitForResponseOrTimeout(message, "OK", std::chrono::milliseconds(millisecondsTilTimeout), cmd);
 
         readWriteMutex.unlock();
 
         return state;
     }
 
-    bool Driver::sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout)
+    bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout)
+    {
+        return sendMessageWaitForResponseOrTimeout(message, millisecondsTilTimeout, UDP_MESSAGE_CMD);
+    }
+
+    bool Driver::sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout, unsigned short cmd)
     {
         char buffer[2048] = { 0 };
         CmdHeader* hdr = (CmdHeader*)buffer;
         hdr->sign = UDP_MESSAGE_SIGN;
-        hdr->cmd = UDP_MESSAGE_CMD;
+        hdr->cmd = cmd;
         hdr->sn = rand();
 
         hdr->len = ((static_cast<short>(message.length()) + 3) >> 2) * 4;

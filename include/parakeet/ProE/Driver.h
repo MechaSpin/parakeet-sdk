@@ -116,6 +116,13 @@ class Driver : public mechaspin::parakeet::Driver
         /// \brief Gets the state of the resample filter
         /// \returns The state of the resample filter
         bool isResampleFilterEnabled();
+
+        /// \brief Sets the sensor boot-up settings
+        /// \param[in] ipAdress - The IP Address the sensor should live on
+        /// \param[in] subnetMask - The subnetMask the sensor should live on
+        /// \param[in] gateway - The gateway the sensor should live on
+        /// \param[in] port - The port that the sensor should be publishing point data from
+        void setSensorSettings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port);
     private:
         void open();
         void ethernetUpdateThreadFunction();
@@ -126,7 +133,8 @@ class Driver : public mechaspin::parakeet::Driver
         unsigned int calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len);
 
         bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout);
-        bool sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout);
+        bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout, unsigned short cmd);
+        bool sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout, unsigned short cmd);
 
         unsigned char* ethernetPortDataBuffer;
         unsigned int ethernetPortDataBufferLength;
