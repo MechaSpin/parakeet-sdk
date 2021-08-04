@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added a base driver class mechaspin::parakeet::Driver which holds common functionality between sensor drivers
 - Added a driver class to support the Parakeet ProE (mechaspin::parakeet::ProE::Driver)
+- Added an example application to set the IPv4 settings of a Parakeet-ProE sensor
 
 ### Modified
 - Updated SimpleExample to support the Parakeet ProE sensor
