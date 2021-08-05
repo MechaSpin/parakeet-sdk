@@ -67,13 +67,13 @@ class Driver : public mechaspin::parakeet::Driver
         void connect(const SensorConfiguration& sensorConfiguration);
 
         /// \brief Start the Driver's processing thread
-        void start();
+        void start() override;
 
         /// \brief Stop the Driver's processing thread
-        void stop();
+        void stop() override;
 
         /// \brief Close a serial port connection
-        void close();
+        void close() override;
 
         /// \brief Set the scanning frequency on the sensor
         /// \param[in] Hz - The scanning frequency to be set
@@ -116,6 +116,8 @@ class Driver : public mechaspin::parakeet::Driver
         BaudRate getBaudRate();
 
     private:
+        static const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
+
         struct MessageData;
 
         void onMessageDataReceived(MessageData* messageData);
@@ -134,7 +136,7 @@ class Driver : public mechaspin::parakeet::Driver
         bool sensorReturnMessageState[internal::SensorResponse::MessageType::NA - 1];
         
         SerialPort serialPort;
-        unsigned char* serialPortDataBuffer;
+        unsigned char serialPortDataBuffer[SERIAL_MESSAGE_DATA_BUFFER_SIZE];;
         unsigned int serialPortDataBufferLength;
         internal::SensorResponseParser sensorResponseParser;
 };

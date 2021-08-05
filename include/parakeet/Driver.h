@@ -110,13 +110,13 @@ class Driver
 
 
         void registerUpdateThreadCallback(std::function<void ()> callback);
-        void throwExceptionIfNotConnected();
+        void assertIsConnected();
 
         virtual bool isConnected() = 0;
 
-        bool isUpdateThreadRunning();
+        bool isRunning();
 
-        void onScanDataReceived(ScanData* scanData);
+        void onScanDataReceived(const ScanData& scanData);
     private:
         void updateThreadMainLoop();
 

@@ -23,9 +23,6 @@ namespace parakeet
 
 	void Driver::close()
 	{
-        bool isc = isConnected();
-        bool runUpdate = runUpdateThread;
-        bool isJoin = updateThread.joinable();
         if (isConnected() || runUpdateThread || updateThread.joinable())
         {
            stop();
@@ -34,7 +31,7 @@ namespace parakeet
 
     void Driver::start()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         runUpdateThread = true;
         updateThreadStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
@@ -53,7 +50,7 @@ namespace parakeet
 		}
 	}
 
-	void Driver::throwExceptionIfNotConnected()
+	void Driver::assertIsConnected()
 	{
         if(!isConnected())
         {
@@ -61,7 +58,7 @@ namespace parakeet
         }
 	}
 
-    bool Driver::isUpdateThreadRunning()
+    bool Driver::isRunning()
 	{
 		return runUpdateThread;
 	}
@@ -91,24 +88,24 @@ namespace parakeet
         updateThreadCallbackFunction = callback;
     }
     
-    void Driver::onScanDataReceived(ScanData* scanData)
+    void Driver::onScanDataReceived(const ScanData& scanData)
     {
-        double anglePerPoint_deg = (scanData->endAngle_deg - scanData->startAngle_deg) / scanData->count;
+        double anglePerPoint_deg = (scanData.endAngle_deg - scanData.startAngle_deg) / scanData.count;
         double deviationFrom360_deg = 1;
 
         //Create PointPolar for each data point
-        for(int i = 0; i < scanData->count; i++)
+        for(int i = 0; i < scanData.count; i++)
         {
-            PointPolar pointPolar(scanData->dist_mm[i], scanData->startAngle_deg + (anglePerPoint_deg * i), scanData->intensity[i]);
+            PointPolar pointPolar(scanData.dist_mm[i], scanData.startAngle_deg + (anglePerPoint_deg * i), scanData.intensity[i]);
 
             pointHoldingList.push_back(pointPolar);
         }
 
-        if(scanData->endAngle_deg + deviationFrom360_deg >= 360)
+        if(scanData.endAngle_deg + deviationFrom360_deg >= 360)
         {
             updateThreadFrameCount++;
 
-            ScanDataPolar scanDataPolar(pointHoldingList, scanData->timestamp);
+            ScanDataPolar scanDataPolar(pointHoldingList, scanData.timestamp);
 
             if (scanCallbackFunction != nullptr)
             {
@@ -117,8 +114,6 @@ namespace parakeet
 
             pointHoldingList.clear();
         }
-
-        delete scanData;
     }
 }
 }

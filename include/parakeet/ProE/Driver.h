@@ -69,13 +69,13 @@ class Driver : public mechaspin::parakeet::Driver
         void connect(const SensorConfiguration& sensorConfiguration);
 
         /// \brief Start the Driver's processing thread
-        void start();
+        void start() override;
 
         /// \brief Stop the Driver's processing thread
-        void stop();
+        void stop() override;
 
         /// \brief Close the ethernet connection
-        void close();
+        void close() override;
 
         /// \brief Set the scanning frequency on the sensor
         /// \param[in] Hz - The scanning frequency to be set
@@ -117,18 +117,20 @@ class Driver : public mechaspin::parakeet::Driver
         /// \returns The state of the resample filter
         bool isResampleFilterEnabled();
 
-        /// \brief Sets the sensor boot-up settings
+        /// \brief Sets the sensor IPv4 settings
         /// \param[in] ipAdress - The IP Address the sensor should live on
         /// \param[in] subnetMask - The subnetMask the sensor should live on
         /// \param[in] gateway - The gateway the sensor should live on
         /// \param[in] port - The port that the sensor should be publishing point data from
-        void setSensorSettings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port);
+        void setIPv4Settings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port);
     private:
+        static const int ETHERNET_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
+
         void open();
         void ethernetUpdateThreadFunction();
         bool isConnected();
 
-        void onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage);
+        void onCompleteLidarMessage(const internal::MessageParser::CompleteLidarMessage& lidarMessage);
 
         unsigned int calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len);
 
@@ -136,12 +138,12 @@ class Driver : public mechaspin::parakeet::Driver
         bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout, unsigned short cmd);
         bool sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout, unsigned short cmd);
 
-        unsigned char* ethernetPortDataBuffer;
-        unsigned int ethernetPortDataBufferLength;
+        unsigned char ethernetPortDataBuffer[ETHERNET_MESSAGE_DATA_BUFFER_SIZE];
+        mechaspin::parakeet::internal::BufferData bufferData;
 
         SensorConfiguration sensorConfiguration;
         UdpSocket ethernetPort;
-        internal::Parser parser;
+        internal::MessageParser parser;
         std::mutex readWriteMutex;
 };
 }

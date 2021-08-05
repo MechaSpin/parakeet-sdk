@@ -24,21 +24,22 @@ namespace mechaspin
 {
 namespace parakeet
 {
+	const int MAX_BUFFER_LENGTH = 8192;
 	const int MAX_IP_LENGTH = 200;
 
 	#if defined(_WIN32)
 		WSADATA wsaData;
 	#endif
 
-	bool UdpSocket::open(const char* ipAddress, int srcPort)
+	bool UdpSocket::open(int srcPort)
 	{
 		#if defined(_WIN32)
 			WSAStartup(MAKEWORD(2, 2), &wsaData);
 		#endif
 
-		ethernetConnection.socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-		if (ethernetConnection.socket == -1)
+		if (socket == -1)
 		{
 			return false;
 		}
@@ -48,13 +49,10 @@ namespace parakeet
 		addr.sin_port = htons(srcPort);
 		addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-		if (::bind(ethernetConnection.socket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+		if (::bind(socket, (struct sockaddr*)&addr, sizeof(addr)) != 0)
 		{
 			return false;
 		}
-
-		ethernetConnection.srcPort = srcPort;
-		ethernetConnection.ipAddress = std::string(ipAddress);
 
 		return true;
 	}
@@ -64,40 +62,39 @@ namespace parakeet
 		if (isConnected())
 		{
 			#if defined(_WIN32)
-				closesocket(ethernetConnection.socket);
+				closesocket(socket);
 				WSACleanup();
 			#elif defined(__linux) || defined(linux) || defined(__linux__)
-				::close(ethernetConnection.socket);
+				::close(socket);
 			#endif
-			ethernetConnection.socket = 0;
+			socket = 0;
 		}
 	}
 
-	int UdpSocket::read(unsigned char* buffer, int currentLength, int bufferSize)
+	int UdpSocket::read(const mechaspin::parakeet::internal::BufferData& bufferData, int bufferMaxSize)
 	{
 		if (isConnected())
 		{
 			fd_set fds;
 			FD_ZERO(&fds);
-			FD_SET(ethernetConnection.socket, &fds);
+			FD_SET(socket, &fds);
 
 			struct timeval to = { 1, 0 };
-			int ret = select(static_cast<int>(ethernetConnection.socket) + 1, &fds, NULL, NULL, &to);
+			int ret = select(static_cast<int>(socket) + 1, &fds, NULL, NULL, &to);
 
-			if (ret > 0 && FD_ISSET(ethernetConnection.socket, &fds))
+			if (ret > 0 && FD_ISSET(socket, &fds))
 			{
 				sockaddr_in addr;
 
-				
 				#if defined(_WIN32)
 					int size = sizeof(addr);
 				#elif defined(__linux) || defined(linux) || defined(__linux__)
 					socklen_t size = sizeof(addr);
 				#endif
 
-				int charsRead = recvfrom(ethernetConnection.socket, 
-					(char*)buffer + currentLength, 
-					bufferSize - currentLength, 0, 
+				int charsRead = recvfrom(socket, 
+					(char*)bufferData.buffer + bufferData.length, 
+					bufferMaxSize - bufferData.length, 0,
 					(struct sockaddr*)&addr, &size);
 
 				if (charsRead == -1)
@@ -122,18 +119,19 @@ namespace parakeet
 		return 0;
 	}
 
-	void UdpSocket::write(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length)
+	void UdpSocket::write(const mechaspin::parakeet::internal::InetAddress& destinationAddress, const mechaspin::parakeet::internal::BufferData& bufferData)
 	{
 		sockaddr_in to;
 		to.sin_family = AF_INET;
-		inet_pton(AF_INET, ipAddress, &to.sin_addr.s_addr);
+		inet_pton(AF_INET, destinationAddress.ipAddress.c_str(), &to.sin_addr.s_addr);
 
-		to.sin_port = htons(dstPort);
+		to.sin_port = htons(destinationAddress.port);
 
-		sendto(ethernetConnection.socket, buffer, length, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
+		sendto(socket, (char*)bufferData.buffer, bufferData.length , 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
 	}
 
-	bool UdpSocket::sendMessageWaitForResponseOrTimeout(const char* ipAddress, unsigned short dstPort, const char* buffer, unsigned int length, const std::string& response, std::chrono::milliseconds timeout)
+	bool UdpSocket::sendMessageWaitForResponseOrTimeout(const mechaspin::parakeet::internal::InetAddress& destinationAddress, 
+		const mechaspin::parakeet::internal::BufferData& bufferData, const std::string& response, std::chrono::milliseconds timeout)
 	{
 		if (!isConnected())
 		{
@@ -142,7 +140,7 @@ namespace parakeet
 
 		auto startTime = std::chrono::system_clock::now();
 
-		write(ipAddress, dstPort, buffer, length);
+		write(destinationAddress, bufferData);
 
 		long long secondsPast = 0;
 
@@ -153,11 +151,11 @@ namespace parakeet
 			{
 				secondsPast = totalSecondsPast;
 
-				write(ipAddress, dstPort, buffer, length);
+				write(destinationAddress, bufferData);
 			}
 
-			unsigned char buffer[1000];
-			int charsRead = read(buffer, 0, 1000);
+			unsigned char buffer[MAX_BUFFER_LENGTH];
+			int charsRead = read(mechaspin::parakeet::internal::BufferData(buffer, 0), MAX_BUFFER_LENGTH);
 
 			if (charsRead != 0)
 			{
@@ -176,7 +174,7 @@ namespace parakeet
 
 	bool UdpSocket::isConnected()
 	{
-		return ethernetConnection.socket != 0;
+		return socket != 0;
 	}
 }
 }
