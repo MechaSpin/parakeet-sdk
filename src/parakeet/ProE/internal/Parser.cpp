@@ -42,18 +42,17 @@ namespace internal
     uint8_t SIZE_OF_INTENSITY = 1;
     uint8_t SIZE_OF_LIDAR_POINT = SIZE_OF_DISTANCE + SIZE_OF_RELATIVE_START_ANGLE + SIZE_OF_INTENSITY;
 
-    Parser::Parser(std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback)
+    MessageParser::MessageParser(std::function<void(const CompleteLidarMessage&)> onCompleteLidarMessageCallback) : onCompleteLidarMessageCallback(onCompleteLidarMessageCallback)
     {
-        this->onCompleteLidarMessageCallback = onCompleteLidarMessageCallback;
         reset();
     }
 
-    void Parser::reset()
+    void MessageParser::reset()
     {
         lastGeneratedTimestamp.validTimestamp = false;
     }
 
-    void Parser::generateTimestamp()
+    void MessageParser::generateTimestamp()
     {
         if (lastGeneratedTimestamp.validTimestamp)
         {
@@ -64,37 +63,37 @@ namespace internal
         lastGeneratedTimestamp.timestamp = std::chrono::system_clock::now();
     }
 
-    void Parser::parseHeader()
+    void MessageParser::parseHeader()
     {
         memcpy(&header, bufferData.buffer + BUFFER_POS_HEADER, sizeof(header));
     }
 
-    void Parser::parseNumPointsInThisPartialSector()
+    void MessageParser::parseNumPointsInThisPartialSector()
     {
         memcpy(&currentLidarMessage->numPoints, bufferData.buffer + BUFFER_POS_TOTAL_POINTS, sizeof(currentLidarMessage->numPoints));
     }
 
-    void Parser::parseNumPointsInSector()
+    void MessageParser::parseNumPointsInSector()
     {
         memcpy(&currentLidarMessage->numPointsInSector, bufferData.buffer + BUFFER_POS_NUM_POINTS_IN_SECTOR, sizeof(currentLidarMessage->numPointsInSector));
     }
 
-    void Parser::parseSectorDataOffset()
+    void MessageParser::parseSectorDataOffset()
     {
         memcpy(&currentLidarMessage->sectorDataOffset, bufferData.buffer + BUFFER_POS_SECTOR_DATA_OFFSET, sizeof(currentLidarMessage->sectorDataOffset));
     }
 
-    void Parser::parseStartAngle()
+    void MessageParser::parseStartAngle()
     {
         memcpy(&currentLidarMessage->startAngle, bufferData.buffer + BUFFER_POS_START_ANGLE, sizeof(currentLidarMessage->startAngle));
     }
 
-    void Parser::parseEndAngle()
+    void MessageParser::parseEndAngle()
     {
         memcpy(&currentLidarMessage->endAngle, bufferData.buffer + BUFFER_POS_END_ANGLE, sizeof(currentLidarMessage->endAngle));
     }
 
-    void Parser::parseSensorProperties()
+    void MessageParser::parseSensorProperties()
     {
         memcpy(&currentLidarMessage->sensorPropertyFlags.value, bufferData.buffer + BUFFER_POS_PROPERTY_FLAGS, sizeof(currentLidarMessage->sensorPropertyFlags.value));
 
@@ -104,17 +103,17 @@ namespace internal
         currentLidarMessage->sensorPropertyFlags.doDataSmoothing = currentLidarMessage->sensorPropertyFlags.value | 0x8;
     }
 
-    void Parser::parseTimestamp()
+    void MessageParser::parseTimestamp()
     {
         memcpy(&currentLidarMessage->timestamp, bufferData.buffer + BUFFER_POS_TIMESTAMP, sizeof(currentLidarMessage->timestamp));
     }
 
-    void Parser::parseDeviceNumber()
+    void MessageParser::parseDeviceNumber()
     {
         memcpy(&currentLidarMessage->deviceNumber, bufferData.buffer + BUFFER_POS_DEVICE_NUMBER, sizeof(currentLidarMessage->deviceNumber));
     }
 
-    void Parser::parsePoints()
+    void MessageParser::parsePoints()
     {
         uint16_t BUFFER_POS_DISTANCES = BUFFER_POS_POINT_DATA;
         uint16_t BUFFER_POS_RELATIVE_START_ANGLES = BUFFER_POS_DISTANCES + (currentLidarMessage->numPoints * SIZE_OF_DISTANCE);
@@ -144,14 +143,14 @@ namespace internal
         }
     }
 
-    void Parser::parseChecksum()
+    void MessageParser::parseChecksum()
     {
         uint16_t BUFFER_POS_CHECKSUM = BUFFER_POS_POINT_DATA + (SIZE_OF_LIDAR_POINT * currentLidarMessage->numPoints);
 
         memcpy(&currentLidarMessage->checksum, bufferData.buffer + BUFFER_POS_CHECKSUM, sizeof(currentLidarMessage->checksum));
     }
 
-    void Parser::parsePartialScan()
+    void MessageParser::parsePartialScan()
     {
         //We are generating the timestamp first, so that we can get the most accurate time.
         generateTimestamp();
@@ -170,7 +169,7 @@ namespace internal
         parseChecksum();
     }
 
-    bool Parser::doesChecksumMatch()
+    bool MessageParser::doesChecksumMatch()
     {
         uint16_t newChecksum = 0;
 
@@ -203,7 +202,7 @@ namespace internal
         return newChecksum == currentLidarMessage->checksum;
     }
 
-    int Parser::getTotalPointsOfAllPartialScans()
+    int MessageParser::getTotalPointsOfAllPartialScans()
     {
         int totalPoints = 0;
         for (auto sector : partialSectorScanDataList)
@@ -214,12 +213,12 @@ namespace internal
         return totalPoints;
     }
 
-    bool Parser::isScanComplete()
+    bool MessageParser::isScanComplete()
     {
         return getTotalPointsOfAllPartialScans() == currentLidarMessage->numPointsInSector;
     }
 
-    bool Parser::isScanCorrupt()
+    bool MessageParser::isScanCorrupt()
     {
         if (getTotalPointsOfAllPartialScans() > currentLidarMessage->numPointsInSector)
         {
@@ -234,7 +233,7 @@ namespace internal
         return false;
     }
 
-    void Parser::createAndPublishCompleteScan()
+    void MessageParser::createAndPublishCompleteScan()
     {
         if (partialSectorScanDataList.size() <= 0)
         {
@@ -250,21 +249,21 @@ namespace internal
             return;
         }
 
-        CompleteLidarMessage* lidarMessage = new CompleteLidarMessage();
+        CompleteLidarMessage lidarMessage;
 
-        lidarMessage->totalPoints = firstMessage->numPointsInSector;
-        lidarMessage->endAngle = firstMessage->deviceNumber;
-        lidarMessage->startAngle = firstMessage->startAngle / 1000;
-        lidarMessage->endAngle = firstMessage->endAngle / 1000;
-        lidarMessage->timestamp = firstMessage->generatedTimestamp.timestamp;
+        lidarMessage.totalPoints = firstMessage->numPointsInSector;
+        lidarMessage.endAngle = firstMessage->deviceNumber;
+        lidarMessage.startAngle = firstMessage->startAngle / 1000;
+        lidarMessage.endAngle = firstMessage->endAngle / 1000;
+        lidarMessage.timestamp = firstMessage->generatedTimestamp.timestamp;
 
-        lidarMessage->sensorPropertyFlags = firstMessage->sensorPropertyFlags;
+        lidarMessage.sensorPropertyFlags = firstMessage->sensorPropertyFlags;
 
         for (auto sector : partialSectorScanDataList)
         {
             for (auto lidarPoint : sector->lidarPoints)
             {
-                lidarMessage->lidarPoints.push_back(lidarPoint);
+                lidarMessage.lidarPoints.push_back(lidarPoint);
             }
         }
 
@@ -273,7 +272,7 @@ namespace internal
         partialSectorScanDataList.clear();
     }
 
-    int Parser::parseLidarDataFromBuffer()
+    int MessageParser::parseLidarDataFromBuffer()
     {
         currentLidarMessage = std::make_shared<PartialLidarMessage>();
 
@@ -295,25 +294,24 @@ namespace internal
         return bufferData.length;
     }
 
-    bool Parser::isLidarMessage()
+    bool MessageParser::isLidarMessage()
     {
         return header == LIDAR_MESSAGE_HEADER;
     }
 
-    bool Parser::isLidarResponse()
+    bool MessageParser::isLidarResponse()
     {
         return header == LIDAR_RESPONSE_HEADER;
     }
 
-    bool Parser::isAlarmMessage()
+    bool MessageParser::isAlarmMessage()
     {
         return header == ALARM_MESSAGE_HEADER;
     }
 
-    int Parser::parseSensorBuffer(int length, unsigned char* buf)
+    int MessageParser::parse(const mechaspin::parakeet::internal::BufferData& bufferData)
     {
-        bufferData.length = length;
-        bufferData.buffer = buf;
+        this->bufferData = bufferData;
 
         parseHeader();
 
@@ -330,7 +328,7 @@ namespace internal
             }
             std::cout << std::endl;
             */
-            return length;
+            return bufferData.length;
         }
         else if (isAlarmMessage())
         {
@@ -339,7 +337,7 @@ namespace internal
         else
         {
             //std::cout << "Failure to parse data from buffer" << std::endl;
-            return length;
+            return bufferData.length;
         }
     }
 }

@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an example application to set the IPv4 settings of a Parakeet-ProE sensor
 
 ### Modified
-- Updated SimpleExample to support the Parakeet ProE sensor
-- [BREAKING] Replaced mechaspin::parakeet::Driver with mechaspin::parakeet::Pro::Driver
-- [BREAKING] Replaced PointPolar.getRange() with PointPolar.getRange_mm()
-- [BREAKING] Replaced PointPolar.getAngleInDegrees() with PointPolar.getAngle_deg()
+- Updated SimpleExample to support the Parakeet ProE sensor (v2.0.0)
+
+### Removed
+- [BREAKING] Removed mechaspin::parakeet::Driver, replaced by mechaspin::parakeet::Pro::Driver
+- [BREAKING] Removed PointPolar.getRange(), replaced by PointPolar.getRange_mm()
+- [BREAKING] Removed PointPolar.getAngleInDegrees(), replaced by PointPolar.getAngle_deg()
 
 ## [2.1.0] - 2021-07-13
 ### Deprecated
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added sensor starting angle and spin rotation to the documentation
 - Added the option to convert from ScanDataXY to ScanDataPolar
+- Added PointPolar.getRange_mm()
+- Added PointPolar.getAngle_deg()
 - Added a deprecation macro
 ### Modified
 - Changed Driver code to start a ScanData set at 0 degrees, rather than 36-72 degrees

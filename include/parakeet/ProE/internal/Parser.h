@@ -10,6 +10,8 @@
 #include <vector>
 #include <chrono>
 
+#include <parakeet/internal/BufferData.h>
+
 namespace mechaspin
 {
 namespace parakeet
@@ -18,7 +20,7 @@ namespace ProE
 {
 namespace internal
 {
-class Parser
+class MessageParser
 {
 	public:
 		struct LidarSensorProperties
@@ -52,19 +54,13 @@ class Parser
 			std::vector<LidarPoint> lidarPoints;
 		};
 
-		Parser(std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback);
+		MessageParser(std::function<void(const CompleteLidarMessage&)> onCompleteLidarMessageCallback);
 
-		int parseSensorBuffer(int length, unsigned char* buf);
+		int parse(const mechaspin::parakeet::internal::BufferData& bufferData);
 
 		void reset();
 
 	private:
-		struct BufferData
-		{
-			int length;
-			unsigned char* buffer;
-		};
-
 		struct LastGeneratedTimestamp
 		{
 			bool validTimestamp;
@@ -126,10 +122,10 @@ class Parser
 		std::shared_ptr<PartialLidarMessage> currentLidarMessage;
 		std::vector<std::shared_ptr<PartialLidarMessage>> partialSectorScanDataList;
 
-		BufferData bufferData;
+		mechaspin::parakeet::internal::BufferData bufferData;
 		LastGeneratedTimestamp lastGeneratedTimestamp;
 
-		std::function<void(CompleteLidarMessage*)> onCompleteLidarMessageCallback;
+		std::function<void(const CompleteLidarMessage&)> onCompleteLidarMessageCallback;
 };
 }
 }

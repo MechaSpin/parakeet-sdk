@@ -13,7 +13,6 @@ namespace parakeet
 {
 namespace ProE
 {
-    const int ETHERNET_MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
     const int START_TIMEOUT_MS = 10000;
     const int MESSAGE_TIMEOUT_MS = 2000;
     const int STOP_TIMEOUT_MS = 1000;
@@ -94,11 +93,7 @@ namespace ProE
     std::string numberToFixedSizeString(unsigned int value, int size)
     {
         unsigned int uvalue = value;
-        if (value < 0)
-        {
-            uvalue = -uvalue;
-        }
-
+        
         std::string result;
         while (size-- > 0)
         {
@@ -106,9 +101,6 @@ namespace ProE
             uvalue /= 10;
         }
 
-        if (value < 0) {
-            result += '-';
-        }
         std::reverse(result.begin(), result.end());
         return result;
     }
@@ -158,14 +150,12 @@ namespace ProE
     {
         this->registerUpdateThreadCallback(std::bind(&Driver::ethernetUpdateThreadFunction, this));
 
-        ethernetPortDataBuffer = new unsigned char[ETHERNET_MESSAGE_DATA_BUFFER_SIZE];
+        bufferData.buffer = ethernetPortDataBuffer;
     }
 
     Driver::~Driver()
     {
         close();
-
-        delete ethernetPortDataBuffer;
     }
 
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
@@ -177,7 +167,7 @@ namespace ProE
 
     void Driver::open()
     {
-        if (ethernetPort.open(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.srcPort))
+        if (ethernetPort.open(sensorConfiguration.srcPort))
         {
             sendMessageWaitForResponseOrTimeout(CW_STOP_ROTATING, STOP_TIMEOUT_MS);
         }
@@ -196,7 +186,7 @@ namespace ProE
 
     void Driver::start()
     {
-        ethernetPortDataBufferLength = 0;
+        bufferData.length = 0;
 
         parser.reset();
 
@@ -223,7 +213,7 @@ namespace ProE
 
     void Driver::enableDataSmoothing(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(SW_SET_DATA_SMOOTHING(enable), MESSAGE_TIMEOUT_MS);
 
@@ -232,7 +222,7 @@ namespace ProE
 
     void Driver::enableRemoveDragPoint(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(SW_SET_DRAG_POINT_REMOVAL(enable), MESSAGE_TIMEOUT_MS);
 
@@ -246,7 +236,7 @@ namespace ProE
 
     void Driver::enableResampleFilter(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(SW_SET_RESAMPLE_FILTER(enable), MESSAGE_TIMEOUT_MS);
 
@@ -255,16 +245,16 @@ namespace ProE
 
     void Driver::setScanningFrequency_Hz(ScanningFrequency Hz)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(SW_SET_SPEED(Hz * 60), MESSAGE_TIMEOUT_MS);
 
         sensorConfiguration.scanningFrequency_Hz = Hz;
     }
 
-    void Driver::setSensorSettings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
+    void Driver::setIPv4Settings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(SW_SET_LIDAR_PROPERTIES(ipAddress, subnetMask, gateway, port), MESSAGE_TIMEOUT_MS, UDP_MESSAGE_SET_PROPERTIES_CMD);
 
@@ -276,14 +266,14 @@ namespace ProE
 
     bool Driver::isDataSmoothingEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dataSmoothing;
     }
 
     bool Driver::isDragPointRemovalEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dragPointRemoval;
     }
@@ -295,14 +285,14 @@ namespace ProE
 
     Driver::ScanningFrequency Driver::getScanningFrequency_Hz()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.scanningFrequency_Hz;
     }
 
     bool Driver::isResampleFilterEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.resampleFilter;
     }
@@ -316,7 +306,7 @@ namespace ProE
 
         readWriteMutex.lock();
 
-        int charsRead = ethernetPort.read(ethernetPortDataBuffer, ethernetPortDataBufferLength, ETHERNET_MESSAGE_DATA_BUFFER_SIZE);
+        int charsRead = ethernetPort.read(bufferData, ETHERNET_MESSAGE_DATA_BUFFER_SIZE);
 
         readWriteMutex.unlock();
         
@@ -325,15 +315,15 @@ namespace ProE
             return;
         }
 
-        ethernetPortDataBufferLength += charsRead;
+        bufferData.length += charsRead;
 
-        unsigned int nl = parser.parseSensorBuffer(ethernetPortDataBufferLength, ethernetPortDataBuffer);
+        unsigned int bytesParsed = parser.parse(bufferData);
 
-        for (unsigned int i = nl; i < ethernetPortDataBufferLength; i++)
+        for (unsigned int i = bytesParsed; i < bufferData.length; i++)
         {
-            ethernetPortDataBuffer[i - nl] = ethernetPortDataBuffer[i];
+            ethernetPortDataBuffer[i - bytesParsed] = ethernetPortDataBuffer[i];
         }
-        ethernetPortDataBufferLength -= nl;
+        bufferData.length -= bytesParsed;
     }
 
     bool Driver::isConnected()
@@ -341,22 +331,20 @@ namespace ProE
         return ethernetPort.isConnected();
     }
 
-    void Driver::onCompleteLidarMessage(internal::Parser::CompleteLidarMessage* lidarMessage)
+    void Driver::onCompleteLidarMessage(const internal::MessageParser::CompleteLidarMessage& lidarMessage)
     {
-        ScanData* scanData = new ScanData(lidarMessage->timestamp);
-        scanData->count = lidarMessage->totalPoints;
-        scanData->startAngle_deg = lidarMessage->startAngle;
-        scanData->endAngle_deg = lidarMessage->endAngle;
+        ScanData scanData(lidarMessage.timestamp);
+        scanData.count = lidarMessage.totalPoints;
+        scanData.startAngle_deg = lidarMessage.startAngle;
+        scanData.endAngle_deg = lidarMessage.endAngle;
 
-        for (int i = 0; i < lidarMessage->lidarPoints.size(); i++)
+        for (int i = 0; i < lidarMessage.lidarPoints.size(); i++)
         {
-            scanData->dist_mm[i] = lidarMessage->lidarPoints[i].distance;
-            scanData->intensity[i] = lidarMessage->lidarPoints[i].intensity;
+            scanData.dist_mm[i] = lidarMessage.lidarPoints[i].distance;
+            scanData.intensity[i] = lidarMessage.lidarPoints[i].intensity;
         }
 
         onScanDataReceived(scanData);
-
-        delete lidarMessage;
     }
 
     bool Driver::sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout, unsigned short cmd)
@@ -377,7 +365,7 @@ namespace ProE
 
     bool Driver::sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout, unsigned short cmd)
     {
-        char buffer[2048] = { 0 };
+        unsigned char buffer[2048] = { 0 };
         CmdHeader* hdr = (CmdHeader*)buffer;
         hdr->sign = UDP_MESSAGE_SIGN;
         hdr->cmd = cmd;
@@ -390,7 +378,10 @@ namespace ProE
         unsigned int* pcrc = (unsigned int*)(buffer + sizeof(CmdHeader) + hdr->len);
         pcrc[0] = calculateEndOfMessageCRC((unsigned int*)(buffer), hdr->len / 4 + 2);
 
-        return ethernetPort.sendMessageWaitForResponseOrTimeout(sensorConfiguration.ipAddress.c_str(), sensorConfiguration.dstPort, buffer, sizeof(CmdHeader) + sizeof(pcrc[0]) + hdr->len, response, timeout);
+        return ethernetPort.sendMessageWaitForResponseOrTimeout(
+            mechaspin::parakeet::internal::InetAddress(sensorConfiguration.ipAddress, sensorConfiguration.dstPort),
+            mechaspin::parakeet::internal::BufferData(buffer, sizeof(CmdHeader) + sizeof(pcrc[0]) + hdr->len),
+            response, timeout);
     }
 
     unsigned int Driver::calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len)

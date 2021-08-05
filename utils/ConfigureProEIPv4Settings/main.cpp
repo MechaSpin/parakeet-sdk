@@ -74,7 +74,7 @@ void setIPv4InformationFromUser(mechaspin::parakeet::ProE::Driver& driver)
     std::cout << "Please enter the port which the sensor should listen on." << std::endl;
     readPort(&port);
 
-    driver.setSensorSettings(ipAddress, subnetMask, defaultGateway, port);
+    driver.setIPv4Settings(ipAddress, subnetMask, defaultGateway, port);
 }
 
 int main(int argc, char* argv[])
@@ -82,14 +82,14 @@ int main(int argc, char* argv[])
     if (argc != 4)
     {
         std::cout << "Run this app via:" << std::endl
-                  << "./ProEIPv4SettingsExample DSTIPADDRESS DSTPORT SRCPORT" << std::endl
+                  << "./ConfigureProEIPv4Settings DSTIPADDRESS DSTPORT SRCPORT" << std::endl
                   << "ie:" << std::endl
-                  << "./ProEIPv4SettingsExample 192.168.158.98 6543 6668" << std::endl;
+                  << "./ConfigureProEIPv4Settings 192.168.158.98 6543 6668" << std::endl;
 
         return -1;
     }
 
-    std::cout << "Starting Parakeet ProEIPv4SettingsExample v" << versionNumber << std::endl;
+    std::cout << "Starting Parakeet ConfigureProEIPv4Settings v" << versionNumber << std::endl;
 
     mechaspin::parakeet::ProE::Driver::SensorConfiguration sensorConfiguration;
     sensorConfiguration.ipAddress = argv[1];

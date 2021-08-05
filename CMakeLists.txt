@@ -20,6 +20,8 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/exceptions/NotConnectedToSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToDetermineBaudRateException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToOpenPortException.h
+	${PARAKEET_HEADER_ROOT}/internal/BufferData.h
+	${PARAKEET_HEADER_ROOT}/internal/InetAddress.h
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponse.h
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponseParser.h
 	${PARAKEET_HEADER_ROOT}/internal/SerialPortHelper.h

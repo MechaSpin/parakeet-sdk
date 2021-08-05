@@ -15,7 +15,6 @@ namespace parakeet
 {
 namespace Pro
 {
-    const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;           // Arbitrary size
     struct Driver::MessageData
     {
         int len;
@@ -63,15 +62,11 @@ namespace Pro
     Driver::Driver()
     {
         this->registerUpdateThreadCallback(std::bind(&Driver::serialUpdateThreadFunction, this));
-
-        serialPortDataBuffer = new unsigned char[SERIAL_MESSAGE_DATA_BUFFER_SIZE];
     }
 
     Driver::~Driver()
     {
         close();
-
-        delete serialPortDataBuffer;
     }
 
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
@@ -157,7 +152,7 @@ namespace Pro
 
     void Driver::enableDataSmoothing(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
 
@@ -166,7 +161,7 @@ namespace Pro
 
     void Driver::enableRemoveDragPoint(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DRAGPOINTREMOVAL, enable ? CW_ENABLE_DRAG_POINT_REMOVAL : CW_DISABLE_DRAG_POINT_REMOVAL, std::chrono::milliseconds(250));
 
@@ -175,7 +170,7 @@ namespace Pro
 
     void Driver::enableIntensityData(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::INTENSITY, enable ? SW_START_WITH_INTENSITY : SW_START_WITHOUT_INTENSITY, std::chrono::milliseconds(250));
 
@@ -184,7 +179,7 @@ namespace Pro
 
     void Driver::setScanningFrequency_Hz(ScanningFrequency Hz)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::SPEED, SW_SET_SPEED(Hz * 60), std::chrono::milliseconds(250));
 
@@ -198,13 +193,13 @@ namespace Pro
 
     void Driver::setBaudRate(BaudRate baudRate)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(200));
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::BAUDRATE, SW_SET_BAUD_RATE(baudRate.getValue()), std::chrono::milliseconds(0));
 
-        if(isUpdateThreadRunning())
+        if(isRunning())
         {
             stop();
 
@@ -222,28 +217,28 @@ namespace Pro
 
     bool Driver::isDataSmoothingEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dataSmoothing;
     }
 
     bool Driver::isDragPointRemovalEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dragPointRemoval;
     }
 
     bool Driver::isIntensityDataEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.intensity;
     }
 
     Driver::ScanningFrequency Driver::getScanningFrequency_Hz()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.scanningFrequency_Hz;
     }
@@ -265,13 +260,13 @@ namespace Pro
 
         serialPortDataBufferLength += charsRead;
 
-        unsigned int nl = parseSensorDataFromBuffer(serialPortDataBufferLength, serialPortDataBuffer);
+        unsigned int bytesParsed = parseSensorDataFromBuffer(serialPortDataBufferLength, serialPortDataBuffer);
 
-        for (unsigned int i = nl; i < serialPortDataBufferLength; i++)
+        for (unsigned int i = bytesParsed; i < serialPortDataBufferLength; i++)
         {
-            serialPortDataBuffer[i - nl] = serialPortDataBuffer[i];
+            serialPortDataBuffer[i - bytesParsed] = serialPortDataBuffer[i];
         }
-        serialPortDataBufferLength -= nl;
+        serialPortDataBufferLength -= bytesParsed;
     }
 
     void Driver::onMessageDataReceived(MessageData* message)
@@ -336,11 +331,11 @@ namespace Pro
                     break;
                 }
 
-                ScanData* data = new ScanData;
-                data->startAngle_deg = start / 10.0;
-                data->endAngle_deg = data->startAngle_deg + 36;
+                ScanData data;
+                data.startAngle_deg = start / 10.0;
+                data.endAngle_deg = data.startAngle_deg + 36;
 
-                data->count = cnt;
+                data.count = cnt;
 
                 unsigned short sum = start + cnt;
                 unsigned char* pdata = buf + idx + 6;
@@ -355,13 +350,13 @@ namespace Pro
 
                     if (sensorConfiguration.intensity)
                     {
-                        data->dist_mm[i] = val & 0x1FFF;
-                        data->intensity[i] = val >> 13;
+                        data.dist_mm[i] = val & 0x1FFF;
+                        data.intensity[i] = val >> 13;
                     }
                     else
                     {
-                        data->dist_mm[i] = val;
-                        data->intensity[i] = 0;
+                        data.dist_mm[i] = val;
+                        data.intensity[i] = 0;
                     }
                 }
 
@@ -375,7 +370,6 @@ namespace Pro
                 else if(!isAutoConnecting)
                 {
                     printf("Checksum check failed\n");
-                    delete data;
                 }
 
                 idx += 8 + cnt * 2;
@@ -388,17 +382,17 @@ namespace Pro
                     break;
                 }
 
-                ScanData* data = new ScanData;
-                data->startAngle_deg = start / 10.0;
-                data->endAngle_deg = data->startAngle_deg + 36;
+                ScanData data;
+                data.startAngle_deg = start / 10.0;
+                data.endAngle_deg = data.startAngle_deg + 36;
 
-                data->count = cnt;
+                data.count = cnt;
 
                 unsigned short sum = start + cnt;
                 unsigned char* pdata = buf + idx + 6;
                 for (int i = 0; i < cnt; i++)
                 {
-                    data->intensity[i] = pdata[i * 3];
+                    data.intensity[i] = pdata[i * 3];
 
                     sum += pdata[i * 3];
 
@@ -409,7 +403,7 @@ namespace Pro
 
                     sum += val;
 
-                    data->dist_mm[i] = val;
+                    data.dist_mm[i] = val;
                 }
 
                 idx += 8 + cnt * 3;
@@ -423,7 +417,6 @@ namespace Pro
                 else if(!isAutoConnecting)
                 {
                     printf("Checksum check failed\n");
-                    delete data;
                 }
             }
 
