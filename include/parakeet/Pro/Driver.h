@@ -60,7 +60,7 @@ class Driver : public mechaspin::parakeet::Driver
         Driver();
 
         /// \brief A deconstructor responsible for shutting down any existing connections
-        ~Driver();
+        virtual ~Driver();
 
         /// \brief Attempt connection to a Parakeet sensor through a serial port
         /// \param[in] sensorConfiguration - Sensor settings and serial port information

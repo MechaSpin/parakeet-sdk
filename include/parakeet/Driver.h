@@ -28,6 +28,9 @@ class Driver
             Frequency_15Hz = 15
         };
 
+        /// \brief Deconstructor to shut down any open connections
+        virtual ~Driver() = default;
+
         /// \brief Gets the scan rate from the sensor
         /// \returns The scan rate
         double getScanRate_Hz();
