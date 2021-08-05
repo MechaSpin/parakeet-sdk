@@ -4,6 +4,8 @@
 
 #include <parakeet/ProE/Driver.h>
 
+#include <algorithm>
+
 #include <parakeet/exceptions/NoResponseFromSensorException.h>
 #include <parakeet/exceptions/UnableToOpenPortException.h>
 
