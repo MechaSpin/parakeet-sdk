@@ -3,50 +3,72 @@
 SimpleExample is an application which utilizes parakeet-sdk to show off how to properly use the api. This document will be going over each important section of code and providing an explanation.
 
 ### Understanding main
-First things first, when interacting with our sensor, we will need to create an instance of the parakeet Driver. 
-Connecting to a serial port with our instance of Driver requires knowledge of the sensors connected serial port and baudrate.
+First things first, when interacting with our sensor, we will need to create an instance of the parakeet Driver. Which Driver, depends on what the user inputs. The user can input "Pro" for the Serial sensor, and ProE for the Ethernet sensor.
 
 ```C++
-if (argc != 3)
+if (std::string("Pro").find(argv[1]) != std::string::npos)
 {
-	std::cout
-		<< "Start application with parameters: {COM_PORT BAUDRATE}. ie: {COM4 500000}" << std::endl 
-		<< "Specify a Baud Rate of 0 to automatically detect the baud rate" << std::endl;
-	return -1;
-}
+	if (argc != 4)
+	{
+		printMissingSensorInfo(true, false);
 
-std::cout << "Starting Parakeet SimpleExample v" << versionNumber << std::endl;
+		return -2;
+	}
 
-mechaspin::parakeet::Driver parakeetSensorDriver;
+	mechaspin::parakeet::Pro::Driver::SensorConfiguration sensorConfiguration;
+	sensorConfiguration.comPort = argv[2];
+	sensorConfiguration.baudRate = mechaspin::parakeet::BaudRate(atoi(argv[3]));
+	sensorConfiguration.dataSmoothing = false;
+	sensorConfiguration.dragPointRemoval = false;
+	sensorConfiguration.intensity = true;
+	sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
 
-std::string comPort = argv[1];
-mechaspin::parakeet::BaudRate baudRate(atoi(argv[2]));
-```
+	mechaspin::parakeet::Pro::Driver* proDriver = new mechaspin::parakeet::Pro::Driver();
 
-Above, we check the command line arguments for two parameters, and assign them to comPort and baudRate. 
-This allows the application to be run as ./SimpleExample COMPORT BaudRate.
+	proDriver->connect(sensorConfiguration);
 
-Next, we need to know what settings we would like the sensor to use when connected to.
-
-```C++
-bool useDataSmoothing = false;
-bool useDragPointRemoval = false;
-bool intensity = true;
-mechaspin::parakeet::Driver::ScanningFrequency startingScanFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_10Hz;
-
-std::cout << "Attempting connection to sensor." << std::endl;
-if(!parakeetSensorDriver.connect(comPort, baudRate, intensity, startingScanFrequency_Hz, useDataSmoothing, useDragPointRemoval))
-{
-	std::cout << "Unable to connect to " << comPort << ", check to ensure that is the proper COM Port and that the unit is plugged in." << std::endl;
-	return -2;
+	driver = proDriver;
 }
 ```
 
-Rather than asking for these parameters at runtime, we set our own values for each parameter. 
-Afterwards, we try to connect to the serial port. 
+Above, if the user intends to use the Parakeet-Pro, then we check the command line arguments for two parameters, and assign them to comPort and baudRate. 
+This allows the application to be run as ./SimpleExample Pro COMPORT BaudRate.
+
+```C++
+else if (std::string("ProE").find(argv[1]) != std::string::npos)
+{
+	if (argc != 5)
+	{
+		printMissingSensorInfo(false, true);
+
+		return -3;
+	}
+
+	mechaspin::parakeet::ProE::Driver::SensorConfiguration sensorConfiguration;
+	sensorConfiguration.ipAddress = argv[2];
+	sensorConfiguration.dstPort = atoi(argv[3]);
+	sensorConfiguration.srcPort = atoi(argv[4]);
+	sensorConfiguration.dataSmoothing = false;
+	sensorConfiguration.dragPointRemoval = false;
+	sensorConfiguration.intensity = true;
+	sensorConfiguration.scanningFrequency_Hz = mechaspin::parakeet::Driver::ScanningFrequency::Frequency_15Hz;
+	sensorConfiguration.resampleFilter = true;
+
+	mechaspin::parakeet::ProE::Driver* proEDriver = new mechaspin::parakeet::ProE::Driver();
+
+	proEDriver->connect(sensorConfiguration);
+
+	driver = proEDriver;
+}
+```
+
+Above, if the user intends to use the Parakeet-ProE, then we check the command line arguments for three parameters, and assign them to ipAddress, dstPort, and srcPort. 
+This allows the application to be run as ./SimpleExample ProE 192.168.158.98 6543 6668.
+
+Afterwards, we try to connect to the sensor. 
 If not successful, we will exit the application with an error stating it was unable to connect.
 
-Now that the serial port is open, we need to start reading data from it.
+Now that we have connected to the sensor, we can start communicating to it.
 
 ```C++
 parakeetSensorDriver.registerScanCallback(onScanComplete);
@@ -76,11 +98,19 @@ while (commandLoop)
 		std::cout << "FPS: " << parakeetSensorDriver.getScanRate_Hz() << std::endl;
 		break;
 	case 's':
-		std::cout << "Intensity data enabled: " << parakeetSensorDriver.isIntensityDataEnabled() << std::endl;
-		std::cout << "Drag point enabled: " << parakeetSensorDriver.isDragPointRemovalEnabled() << std::endl;
-		std::cout << "Data smoothing enabled: " << parakeetSensorDriver.isDataSmoothingEnabled() << std::endl;
-		std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver.getScanningFrequency_Hz() << std::endl;
-		std::cout << "Baud Rate: " << parakeetSensorDriver.getBaudRate().getValue() << std::endl;
+		std::cout << "Intensity data enabled: " << parakeetSensorDriver->isIntensityDataEnabled() << std::endl;
+		std::cout << "Drag point enabled: " << parakeetSensorDriver->isDragPointRemovalEnabled() << std::endl;
+		std::cout << "Data smoothing enabled: " << parakeetSensorDriver->isDataSmoothingEnabled() << std::endl;
+		std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver->getScanningFrequency_Hz() << std::endl;
+
+		if(proDriver)
+		{
+			std::cout << "Baud Rate: " << proDriver->getBaudRate().getValue() << std::endl;
+		}
+		if(proEDriver)
+		{
+			std::cout << "Resample Filter: " << proEDriver->isResampleFilterEnabled() << std::endl;
+		}
 		break;
 	case 'z':
 	{
@@ -162,11 +192,19 @@ When the user types the 'f' character, the application will print out the scan r
 
 ```C++
 case 's':
-	std::cout << "Intensity data enabled: " << parakeetSensorDriver.isIntensityDataEnabled() << std::endl;
-	std::cout << "Drag point enabled: " << parakeetSensorDriver.isDragPointRemovalEnabled() << std::endl;
-	std::cout << "Data smoothing enabled: " << parakeetSensorDriver.isDataSmoothingEnabled() << std::endl;
-	std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver.getScanningFrequency_Hz() << std::endl;
-	std::cout << "Baud Rate: " << parakeetSensorDriver.getBaudRate().getValue() << std::endl;
+	std::cout << "Intensity data enabled: " << parakeetSensorDriver->isIntensityDataEnabled() << std::endl;
+	std::cout << "Drag point enabled: " << parakeetSensorDriver->isDragPointRemovalEnabled() << std::endl;
+	std::cout << "Data smoothing enabled: " << parakeetSensorDriver->isDataSmoothingEnabled() << std::endl;
+	std::cout << "Scanning Frequency (Hz): " << parakeetSensorDriver->getScanningFrequency_Hz() << std::endl;
+
+	if(proDriver)
+	{
+		std::cout << "Baud Rate: " << proDriver->getBaudRate().getValue() << std::endl;
+	}
+	if(proEDriver)
+	{
+		std::cout << "Resample Filter: " << proEDriver->isResampleFilterEnabled() << std::endl;
+	}
 	break;
 ```
 

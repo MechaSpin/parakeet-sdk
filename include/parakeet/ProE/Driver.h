@@ -2,14 +2,12 @@
 	Copyright 2021 OpenJAUS, LLC (dba MechaSpin). Subject to the MIT license.
 */
 
-#ifndef PARAKEET_PRO_DRIVER_H
-#define PARAKEET_PRO_DRIVER_H
+#ifndef PARAKEET_PROE_DRIVER_H
+#define PARAKEET_PROE_DRIVER_H
 
-#include <parakeet/BaudRate.h>
 #include <parakeet/Driver.h>
-#include <parakeet/macros.h>
-#include <parakeet/SerialPort.h>
-#include <parakeet/internal/SensorResponseParser.h>
+#include <parakeet/UdpSocket.h>
+#include <parakeet/ProE/internal/Parser.h>
 
 #include <thread>
 #include <iostream>
@@ -18,11 +16,13 @@
 #include <stdio.h>
 #include <functional>
 
+#include <mutex>
+
 namespace mechaspin
 {
 namespace parakeet
 {
-namespace Pro
+namespace ProE
 {
 class Driver : public mechaspin::parakeet::Driver
 {
@@ -32,28 +32,30 @@ class Driver : public mechaspin::parakeet::Driver
             SensorConfiguration() = default;
 
             /// \brief Create a SensorConfiguration object with the following settings
-            /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
-            /// \param[in] baudRate - The baud rate the sensor is currently set to. Using BaudRates::Auto will try to automatically determine the baud rate.
             /// \param[in] intensity - Should the sensor return intensity data
             /// \param[in] scanningFrequency_Hz - The speed which the sensor should be spinning at
             /// \param[in] dataSmoothing - Should data smoothing be enabled
             /// \param[in] dragPointRemoval - Should drag point removal be enabled
-            SensorConfiguration(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
+            SensorConfiguration(const std::string& ipAddress, int dstPort, int srcPort, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval, bool resampleFilter)
             {
-                this->comPort = comPort;
-                this->baudRate = baudRate;
+                this->ipAddress = ipAddress;
+                this->dstPort = dstPort;
+                this->srcPort = srcPort;
                 this->intensity = intensity;
                 this->scanningFrequency_Hz = scanningFrequency_Hz;
                 this->dataSmoothing = dataSmoothing;
                 this->dragPointRemoval = dragPointRemoval;
+                this->resampleFilter = resampleFilter;
             }
 
-            std::string comPort;
-            BaudRate baudRate = BaudRates::Auto;
-            ScanningFrequency scanningFrequency_Hz;
+            std::string ipAddress;
+            int dstPort;
+            int srcPort;
             bool intensity;
+            ScanningFrequency scanningFrequency_Hz;
             bool dataSmoothing;
             bool dragPointRemoval;
+            bool resampleFilter;
         };
 
         /// \brief A constructor responsible for intializing default variable states
@@ -62,8 +64,8 @@ class Driver : public mechaspin::parakeet::Driver
         /// \brief A deconstructor responsible for shutting down any existing connections
         virtual ~Driver();
 
-        /// \brief Attempt connection to a Parakeet sensor through a serial port
-        /// \param[in] sensorConfiguration - Sensor settings and serial port information
+        /// \brief Attempt connection to a Parakeet sensor through a ethernet port
+        /// \param[in] sensorConfiguration - Sensor settings and ethernet port information
         void connect(const SensorConfiguration& sensorConfiguration);
 
         /// \brief Start the Driver's processing thread
@@ -72,7 +74,7 @@ class Driver : public mechaspin::parakeet::Driver
         /// \brief Stop the Driver's processing thread
         void stop() override;
 
-        /// \brief Close a serial port connection
+        /// \brief Close the ethernet connection
         void close() override;
 
         /// \brief Set the scanning frequency on the sensor
@@ -107,38 +109,42 @@ class Driver : public mechaspin::parakeet::Driver
         /// \returns The state of drag point removal
         bool isDragPointRemovalEnabled();
 
-        /// \brief Set the baud rate of the sensor
-        /// \param[in] baudRate - The baud rate to be set
-        void setBaudRate(BaudRate baudRate);
+        /// \brief Set the state of the resample filter on the sensor
+        /// \param[in] enable - The state of the resample filter 
+        void enableResampleFilter(bool enable);
 
-        /// \brief Gets the current baud rate
-        /// \returns The current baud rate
-        BaudRate getBaudRate();
+        /// \brief Gets the state of the resample filter
+        /// \returns The state of the resample filter
+        bool isResampleFilterEnabled();
 
+        /// \brief Sets the sensor IPv4 settings
+        /// \param[in] ipAdress - The IP Address the sensor should live on
+        /// \param[in] subnetMask - The subnetMask the sensor should live on
+        /// \param[in] gateway - The gateway the sensor should live on
+        /// \param[in] port - The port that the sensor should be publishing point data from
+        void setIPv4Settings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port);
     private:
-        static const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
-
-        struct MessageData;
-
-        void onMessageDataReceived(MessageData* messageData);
-        int parseSensorDataFromBuffer(int length, unsigned char* buf);
+        static const int ETHERNET_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
 
         void open();
-        void autoFindBaudRate();
-        void serialUpdateThreadFunction();
-        bool sendMessageWaitForResponseOrTimeout(internal::SensorResponse::MessageType messageType, const std::string& message, std::chrono::milliseconds timeout);
-
+        void ethernetUpdateThreadFunction();
         bool isConnected();
 
-        bool isAutoConnecting;
-        SensorConfiguration sensorConfiguration;
+        void onCompleteLidarMessage(const internal::MessageParser::CompleteLidarMessage& lidarMessage);
 
-        bool sensorReturnMessageState[internal::SensorResponse::MessageType::NA - 1];
-        
-        SerialPort serialPort;
-        unsigned char serialPortDataBuffer[SERIAL_MESSAGE_DATA_BUFFER_SIZE];;
-        unsigned int serialPortDataBufferLength;
-        internal::SensorResponseParser sensorResponseParser;
+        unsigned int calculateEndOfMessageCRC(unsigned int* ptr, unsigned int len);
+
+        bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout);
+        bool sendMessageWaitForResponseOrTimeout(const std::string& message, int millisecondsTilTimeout, unsigned short cmd);
+        bool sendUdpMessageWaitForResponseOrTimeout(const std::string& message, const std::string& response, std::chrono::milliseconds timeout, unsigned short cmd);
+
+        unsigned char ethernetPortDataBuffer[ETHERNET_MESSAGE_DATA_BUFFER_SIZE];
+        mechaspin::parakeet::internal::BufferData bufferData;
+
+        SensorConfiguration sensorConfiguration;
+        UdpSocket ethernetPort;
+        internal::MessageParser parser;
+        std::mutex readWriteMutex;
 };
 }
 }

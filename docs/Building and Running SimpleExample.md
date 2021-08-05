@@ -24,7 +24,9 @@
 
 #### 5a. Running using Visual Studio
 - In the solution explorer, right click on the SimpleExample project, and select properties
-- Under the debugging tab, in the Command Arguments section, insert the devices COMPORT followed by the baudrate (ie: "COM3 500000")
+- Under the debugging tab, in the Command Arguments section, insert the following arguments:
+	- Parakeet Pro: `Pro COMPORT BAUDRATE` ie: `Pro /dev/ttyUSB0 0`
+	- Parakeet ProE: `ProE destinationIPAddress destinationPort sourcePort` ie: `ProE 192.168.158.98 6543 6668`
 - Note: Using a BAUDRATE of 0 will have the application automatically detect the BAUDRATE
 
 #### 5b. Running using Command Prompt
@@ -50,10 +52,16 @@ make
 ```
 
 #### 4. Running SimpleExample
-- Run the app by executing 
+- Run the app by executing one of the following
 
+Parakeet Pro:
 ```
-{PARAKEET_ROOT}/examples/SimpleExample/build/SimpleExample.exe COMPORT BAUDRATE (ie: "/dev/ttyUSB0 500000")
+{PARAKEET_ROOT}/examples/SimpleExample/build/SimpleExample.exe Pro COMPORT BAUDRATE (ie: "Pro /dev/ttyUSB0 500000")
+```
+
+Parakeet ProE:
+```
+{PARAKEET_ROOT}/examples/SimpleExample/build/SimpleExample.exe ProE destinationIPAddress destinationPort sourcePort (ie: "ProE 192.168.158.98 6543 6668")
 ```
 
 - Note: Using a BAUDRATE of 0 will have the application automatically detect the BAUDRATE
