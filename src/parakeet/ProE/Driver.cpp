@@ -45,7 +45,8 @@ namespace ProE
 
     const std::string SW_SET_SPEED_PREFIX = "LSRPM:";
     const std::string SW_SET_BIAS_PREFIX = "LSERR:";
-    const std::string SW_SET_LIDAR_PROPERTIES_PREFIX = "LSUDP:";
+    const std::string SW_SET_SRC_IPV4_PROPERTIES_PREFIX = "LSUDP:";
+    const std::string SW_SET_DST_IPV4_PROPERTIES_PREFIX = "LSDST:";
     const std::string SW_SET_OUTPUT_UNIT_OF_MEASURE_PREFIX = "LSMMU:";
 
     const std::string SW_SET_DATA_SMOOTHING_PREFIX = "LSSS";
@@ -124,15 +125,29 @@ namespace ProE
         return result;
     }
 
-    const std::string SW_SET_LIDAR_PROPERTIES(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
+    const std::string SW_SET_SRC_IPV4_PROPERTIES(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
     {
         std::string result;
 
-        result += SW_SET_LIDAR_PROPERTIES_PREFIX;
+        result += SW_SET_SRC_IPV4_PROPERTIES_PREFIX;
 
         result += unsignedCharArrayToString(ipAddress, IP_ADDRESS_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
         result += unsignedCharArrayToString(subnetMask, SUBNET_MASK_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
         result += unsignedCharArrayToString(gateway, GATEWAY_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
+        result += numberToFixedSizeString(port, PORT_STRING_LENGTH);
+
+        result += SW_POSTFIX;
+
+        return result;
+    }
+
+    const std::string SW_SET_DST_IPV4_PROPERTIES(const unsigned char* ipAddress, const unsigned short port)
+    {
+        std::string result;
+
+        result += SW_SET_DST_IPV4_PROPERTIES_PREFIX;
+
+        result += unsignedCharArrayToString(ipAddress, IP_ADDRESS_ARRAY_SIZE) + SW_SET_LIDAR_PROPERTIES_DELIMITER;
         result += numberToFixedSizeString(port, PORT_STRING_LENGTH);
 
         result += SW_POSTFIX;
@@ -254,16 +269,23 @@ namespace ProE
         sensorConfiguration.scanningFrequency_Hz = Hz;
     }
 
-    void Driver::setIPv4Settings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port)
+    void Driver::setSensorIPv4Settings(const std::uint8_t ipAddress[], const std::uint8_t subnetMask[], const std::uint8_t gateway[], const unsigned short port)
     {
         assertIsConnected();
 
-        sendMessageWaitForResponseOrTimeout(SW_SET_LIDAR_PROPERTIES(ipAddress, subnetMask, gateway, port), MESSAGE_TIMEOUT_MS, UDP_MESSAGE_SET_PROPERTIES_CMD);
+        sendMessageWaitForResponseOrTimeout(SW_SET_SRC_IPV4_PROPERTIES(ipAddress, subnetMask, gateway, port), MESSAGE_TIMEOUT_MS, UDP_MESSAGE_SET_PROPERTIES_CMD);
 
         sensorConfiguration.dstPort = port;
         sensorConfiguration.ipAddress = unsignedCharArrayToString(ipAddress, IP_ADDRESS_ARRAY_SIZE);
+    }
 
-        close();
+    void Driver::setSensorDestinationIPv4Settings(const std::uint8_t ipAddress[], const unsigned short port)
+    {
+        assertIsConnected();
+
+        sendMessageWaitForResponseOrTimeout(SW_SET_DST_IPV4_PROPERTIES(ipAddress, port), MESSAGE_TIMEOUT_MS, UDP_MESSAGE_SET_PROPERTIES_CMD);
+
+        sensorConfiguration.srcPort = port;
     }
 
     bool Driver::isDataSmoothingEnabled()

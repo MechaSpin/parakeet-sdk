@@ -117,12 +117,18 @@ class Driver : public mechaspin::parakeet::Driver
         /// \returns The state of the resample filter
         bool isResampleFilterEnabled();
 
-        /// \brief Sets the sensor IPv4 settings
-        /// \param[in] ipAdress - The IP Address the sensor should live on
-        /// \param[in] subnetMask - The subnetMask the sensor should live on
-        /// \param[in] gateway - The gateway the sensor should live on
-        /// \param[in] port - The port that the sensor should be publishing point data from
-        void setIPv4Settings(const unsigned char* ipAddress, const unsigned char* subnetMask, const unsigned char* gateway, const unsigned short port);
+        /// \brief Set the IP address and port for the sensor. Messages to the sensor will be sent to this address.
+        /// \param[in] ipAdress - The IP Address the sensor will live on, as an array of four bytes
+        /// \param[in] subnetMask - The subnet mask the sensor will live on, as an array of four bytes
+        /// \param[in] gateway - The gateway the sensor will live on, as an array of four bytes
+        /// \param[in] port - The port that the sensor will be listening on
+        void setSensorIPv4Settings(const std::uint8_t ipAddress[], const std::uint8_t subnetMask[], const std::uint8_t gateway[], const unsigned short port);
+        
+        /// \brief Set the IP address and port for the sensor to publish data to. Messages from the sensor will be received by this address.
+        /// \param[in] ipAdress - The IP Address the sensor will send messages to, as an array of four bytes
+        /// \param[in] port - The port that the sensor will be sending messages to
+        void setSensorDestinationIPv4Settings(const std::uint8_t ipAddress[], const unsigned short port);
+        
     private:
         static const int ETHERNET_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
 

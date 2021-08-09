@@ -7,74 +7,65 @@
 #include <vector>
 
 #include <parakeet/ProE/Driver.h>
+#include <parakeet/util.h>
 
 const char versionNumber[] = "1.0.0";
 
-void readIPv4FormattedString(unsigned char* outputResult)
+std::vector<uint8_t> readIPv4FormattedString()
+{
+    std::vector<uint8_t> outputResult;
+
+    while(outputResult.size() != 4)
+    {
+        std::string lineIn;
+        std::getline(std::cin, lineIn);
+
+        outputResult = mechaspin::parakeet::util::addressToByteArray(lineIn);
+    }
+
+    return outputResult;
+}
+
+unsigned short readPort()
 {
     std::string lineIn;
     std::getline(std::cin, lineIn);
 
-    std::vector<std::string> numbers;
-    std::string currentNumber;
-    char dotCount = 0;
-    for(char c : lineIn)
-    {
-        if(c == '.')
-        {
-            dotCount++;
-            numbers.push_back(currentNumber);
-            currentNumber = "";
-        }
-        else
-        {
-            currentNumber += c;
-        }
-    }
-    numbers.push_back(currentNumber);
-
-    if(dotCount != 3)
-    {
-        return;
-    }
-
-    for(int i = 0; i < 4; i++)
-    {
-        outputResult[i] = atoi(numbers[i].c_str());
-    }
+    return atoi(lineIn.c_str());
 }
 
-void readPort(unsigned short* outputResult)
+void setSourceIPv4InformationFromUser(mechaspin::parakeet::ProE::Driver& driver)
 {
-    std::string lineIn;
-    std::getline(std::cin, lineIn);
-
-    *outputResult = atoi(lineIn.c_str());
-}
-
-void setIPv4InformationFromUser(mechaspin::parakeet::ProE::Driver& driver)
-{
-    unsigned char ipAddress[4];
-    unsigned char subnetMask[4];
-    unsigned char defaultGateway[4];
-    unsigned short port;
-
     std::cout << "Please enter the IP Address the sensor should be listed under." << std::endl;
-
-    readIPv4FormattedString(ipAddress);
+    std::vector<uint8_t> srcIPAddress = readIPv4FormattedString();
 
     std::cout << "Please enter the subnet mask the sensor should be listed under." << std::endl;
-
-    readIPv4FormattedString(subnetMask);
+    std::vector<uint8_t> subnetMask = readIPv4FormattedString();
 
     std::cout << "Please enter the default gateway the sensor should be listed under." << std::endl;
-
-    readIPv4FormattedString(defaultGateway);
+    std::vector<uint8_t> defaultGateway = readIPv4FormattedString();
 
     std::cout << "Please enter the port which the sensor should listen on." << std::endl;
-    readPort(&port);
+    unsigned short srcPort = readPort();
 
-    driver.setIPv4Settings(ipAddress, subnetMask, defaultGateway, port);
+    driver.setSensorIPv4Settings(srcIPAddress.data(), subnetMask.data(), defaultGateway.data(), srcPort);
+
+    std::cout << "IPv4 source settings set!" << std::endl 
+            << "Please power cycle the device, and reconfigure your runtime parameters." << std::endl;
+}
+
+void setDestinationIPv4InformationFromUser(mechaspin::parakeet::ProE::Driver& driver)
+{
+    std::cout << "Please enter the IP Address the sensor should send messages to." << std::endl;
+    std::vector<uint8_t> destIPAddress = readIPv4FormattedString();
+
+    std::cout << "Please enter the port which the sensor should send messages to." << std::endl;
+    unsigned short destPort = readPort();
+
+    driver.setSensorDestinationIPv4Settings(destIPAddress.data(), destPort);
+
+    std::cout << "IPv4 destination settings set!" << std::endl 
+            << "Please power cycle the device, and reconfigure your network adapter." << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -111,9 +102,31 @@ int main(int argc, char* argv[])
 
     try
     {
-        setIPv4InformationFromUser(proEDriver);
+        bool invalidInput;
 
-        std::cout << "IPv4 settings set!" << std::endl;
+        do
+        {
+            invalidInput = false;
+
+            std::cout << std::endl << "Please enter 1 to modify the sensor source settings, or 2 to modify the sensor destination settings" << std::endl;
+
+            std::string lineIn;
+            std::getline(std::cin, lineIn);
+
+
+            if(lineIn == "1")
+            {
+                setSourceIPv4InformationFromUser(proEDriver);
+            }
+            else if(lineIn == "2")
+            {
+                setDestinationIPv4InformationFromUser(proEDriver);
+            }
+            else
+            {
+                invalidInput = true;
+            }
+        } while (invalidInput);
     }
     catch (const std::runtime_error& error)
     {
