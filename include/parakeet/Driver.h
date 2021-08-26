@@ -133,6 +133,7 @@ class Driver
         std::vector<PointPolar> pointHoldingList;
         std::function<void(const ScanDataPolar&)> scanCallbackFunction = nullptr;
 
+        std::chrono::system_clock::time_point timestampOfFirstMessage;
 };
 }
 }

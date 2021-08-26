@@ -93,6 +93,11 @@ namespace parakeet
         double anglePerPoint_deg = (scanData.endAngle_deg - scanData.startAngle_deg) / scanData.count;
         double deviationFrom360_deg = 1;
 
+        if (pointHoldingList.size() == 0)
+        {
+            timestampOfFirstMessage = scanData.timestamp;
+        }
+
         //Create PointPolar for each data point
         for(int i = 0; i < scanData.count; i++)
         {
@@ -105,7 +110,7 @@ namespace parakeet
         {
             updateThreadFrameCount++;
 
-            ScanDataPolar scanDataPolar(pointHoldingList, scanData.timestamp);
+            ScanDataPolar scanDataPolar(pointHoldingList, timestampOfFirstMessage);
 
             if (scanCallbackFunction != nullptr)
             {
