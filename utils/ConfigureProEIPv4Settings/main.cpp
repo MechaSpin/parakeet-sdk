@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
         std::cout << "Run this app via:" << std::endl
                   << "./ConfigureProEIPv4Settings DSTIPADDRESS DSTPORT SRCPORT" << std::endl
                   << "ie:" << std::endl
-                  << "./ConfigureProEIPv4Settings 192.168.158.98 6543 6668" << std::endl;
+                  << "./ConfigureProEIPv4Settings 192.168.158.98 6668 6543" << std::endl;
 
         return -1;
     }
