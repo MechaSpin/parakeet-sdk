@@ -6,8 +6,8 @@
 #define PARAKEET_PRO_DRIVER_H
 
 #include <parakeet/BaudRate.h>
+#include <parakeet/Driver.h>
 #include <parakeet/macros.h>
-#include <parakeet/ScanDataPolar.h>
 #include <parakeet/SerialPort.h>
 #include <parakeet/internal/SensorResponseParser.h>
 
@@ -24,17 +24,9 @@ namespace parakeet
 {
 namespace Pro
 {
-class Driver
+class Driver : public mechaspin::parakeet::Driver
 {
     public:
-        /// \brief All currently supported Scanning Frequencies
-        enum ScanningFrequency
-        {
-            Frequency_7Hz = 7,
-            Frequency_10Hz = 10,
-            Frequency_15Hz = 15
-        };
-
         struct SensorConfiguration
         {
             SensorConfiguration() = default;
@@ -64,39 +56,24 @@ class Driver
             bool dragPointRemoval;
         };
 
-        /// \brief A deconstructor responsible for shutting down a existing serial port connection
-        ~Driver();
+        /// \brief A constructor responsible for intializing default variable states
+        Driver();
+
+        /// \brief A deconstructor responsible for shutting down any existing connections
+        virtual ~Driver();
 
         /// \brief Attempt connection to a Parakeet sensor through a serial port
         /// \param[in] sensorConfiguration - Sensor settings and serial port information
         void connect(const SensorConfiguration& sensorConfiguration);
 
-        /// \brief Attempt connection to a Parakeet sensor through a serial port
-        /// \param[in] comPort - The OS location of the serial port ie: ("COM3" | "/dev/ttyUSB0")
-        /// \param[in] baudRate - The baud rate the sensor is currently set to. Using BaudRates::Auto will try to automatically determine the baud rate.
-        /// \param[in] intensity - Should the sensor return intensity data
-        /// \param[in] scanningFrequency_Hz - The speed which the sensor should be spinning at
-        /// \param[in] dataSmoothing - Should data smoothing be enabled
-        /// \param[in] dragPointRemoval - Should drag point removal be enabled
-        /// \returns True if connection was successful, false otherwise
-        PARAKEET_DEPRECATED(bool connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval));
-
         /// \brief Start the Driver's processing thread
-        void start();
+        void start() override;
 
         /// \brief Stop the Driver's processing thread
-        void stop();
+        void stop() override;
 
         /// \brief Close a serial port connection
-        void close();
-
-        /// \brief Set a function to be called when scan data is received from the sensor
-        /// \param[in] callback - The function to be called when data is received
-        void registerScanCallback(std::function<void(const ScanDataPolar&)> callback);
-
-        /// \brief Gets the scan rate from the sensor
-        /// \returns The scan rate
-        double getScanRate_Hz();
+        void close() override;
 
         /// \brief Set the scanning frequency on the sensor
         /// \param[in] Hz - The scanning frequency to be set
@@ -139,19 +116,19 @@ class Driver
         BaudRate getBaudRate();
 
     private:
-        struct ScanData;
+        static const int SERIAL_MESSAGE_DATA_BUFFER_SIZE = 8192;// Arbitrary size
+
         struct MessageData;
 
-        void onScanDataReceived(ScanData* scanData);
         void onMessageDataReceived(MessageData* messageData);
         int parseSensorDataFromBuffer(int length, unsigned char* buf);
 
         void open();
         void autoFindBaudRate();
-        void serialInterfaceThreadFunction();
+        void serialUpdateThreadFunction();
         bool sendMessageWaitForResponseOrTimeout(internal::SensorResponse::MessageType messageType, const std::string& message, std::chrono::milliseconds timeout);
 
-        void throwExceptionIfNotConnected();
+        bool isConnected();
 
         bool isAutoConnecting;
         SensorConfiguration sensorConfiguration;
@@ -159,16 +136,9 @@ class Driver
         bool sensorReturnMessageState[internal::SensorResponse::MessageType::NA - 1];
         
         SerialPort serialPort;
+        unsigned char serialPortDataBuffer[SERIAL_MESSAGE_DATA_BUFFER_SIZE];;
+        unsigned int serialPortDataBufferLength;
         internal::SensorResponseParser sensorResponseParser;
-
-        std::chrono::milliseconds interfaceThreadStartTime;
-        int interfaceThreadFrameCount = 0;
-        std::thread serialInterfaceThread;
-        bool runSerialInterfaceThread;
-
-        std::chrono::time_point<std::chrono::system_clock> timeOfFirstPoint;
-        std::vector<PointPolar> pointHoldingList;
-        std::function<void(const ScanDataPolar&)> scanCallbackFunction = nullptr;
 };
 }
 }

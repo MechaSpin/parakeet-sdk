@@ -22,19 +22,9 @@ class PointPolar
         /// \returns A PointPolar object which holds the information given through the params.
         PointPolar(double range_mm, double angle_deg, std::uint16_t intensity);
 
-        /// \deprecated Replaced by getRange_mm()
-        /// \brief Returns the distance, in millimeters, from the origin
-        /// \returns Distance, in millimeters, from the origin
-        PARAKEET_DEPRECATED(double getRange() const);
-
         /// \brief Returns the distance, in millimeters, from the origin
         /// \returns Distance, in millimeters, from the origin
         double getRange_mm() const;
-
-        /// \deprecated Replaced by getAngle_deg()
-        /// \brief Returns the polar angle in degree form
-        /// \returns Polar angle in degree form
-        PARAKEET_DEPRECATED(double getAngleInDegrees() const);
 
         /// \brief Returns the polar angle in degree form
         /// \returns Polar angle in degree form

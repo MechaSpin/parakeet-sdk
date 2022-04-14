@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.5)
-project(Parakeet VERSION 2.1.0)
+project(Parakeet VERSION 3.0.0)
 
 set (PROJECT_VERSION_STRING ${PROJECT_NAME}-${PROJECT_VERSION})
 
@@ -14,26 +14,35 @@ set(PARAKEET_HEADER
 	${PARAKEET_HEADER_ROOT}/ScanDataPolar.h
 	${PARAKEET_HEADER_ROOT}/ScanDataXY.h
 	${PARAKEET_HEADER_ROOT}/SerialPort.h
+	${PARAKEET_HEADER_ROOT}/UdpSocket.h
 	${PARAKEET_HEADER_ROOT}/util.h
+	${PARAKEET_HEADER_ROOT}/exceptions/NoResponseFromSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/NotConnectedToSensorException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToDetermineBaudRateException.h
 	${PARAKEET_HEADER_ROOT}/exceptions/UnableToOpenPortException.h
+	${PARAKEET_HEADER_ROOT}/internal/BufferData.h
+	${PARAKEET_HEADER_ROOT}/internal/InetAddress.h
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponse.h
 	${PARAKEET_HEADER_ROOT}/internal/SensorResponseParser.h
 	${PARAKEET_HEADER_ROOT}/internal/SerialPortHelper.h
 	${PARAKEET_HEADER_ROOT}/Pro/Driver.h
+	${PARAKEET_HEADER_ROOT}/ProE/Driver.h
+	${PARAKEET_HEADER_ROOT}/ProE/internal/Parser.h
 )
 
 set(PARAKEET_SOURCE_ROOT_OUTSIDE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(PARAKEET_SOURCE_ROOT ${PARAKEET_SOURCE_ROOT_OUTSIDE}/parakeet)
 set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/BaudRate.cpp
+	${PARAKEET_SOURCE_ROOT}/Driver.cpp
 	${PARAKEET_SOURCE_ROOT}/PointPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/PointXY.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataPolar.cpp
 	${PARAKEET_SOURCE_ROOT}/ScanDataXY.cpp
 	${PARAKEET_SOURCE_ROOT}/SerialPort.cpp
+	${PARAKEET_SOURCE_ROOT}/UdpSocket.cpp
 	${PARAKEET_SOURCE_ROOT}/util.cpp
+	${PARAKEET_SOURCE_ROOT}/exceptions/NoResponseFromSensorException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/NotConnectedToSensorException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToDetermineBaudRateException.cpp
 	${PARAKEET_SOURCE_ROOT}/exceptions/UnableToOpenPortException.cpp
@@ -41,6 +50,8 @@ set(PARAKEET_SOURCE
 	${PARAKEET_SOURCE_ROOT}/internal/SensorResponseParser.cpp
 	${PARAKEET_SOURCE_ROOT}/internal/SerialPortHelper.cpp
 	${PARAKEET_SOURCE_ROOT}/Pro/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/ProE/Driver.cpp
+	${PARAKEET_SOURCE_ROOT}/ProE/internal/Parser.cpp
 )
 
 include(CMakePackageConfigHelpers)

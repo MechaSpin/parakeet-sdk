@@ -22,16 +22,6 @@ class PointXY
         /// \returns A PointXY object which holds the information given through the params.
         PointXY(double x_mm, double y_mm, std::uint16_t intensity);
 
-        /// \deprecated Replaced by getX_mm()
-        /// \brief Returns the distance, in millimeters, from the origin in the X direction
-        /// \returns Distance, in millimeters, from the origin in the X direction
-        PARAKEET_DEPRECATED(double getX() const);
-
-        /// \deprecated Replaced by getY_mm()
-        /// \brief Returns the distance, in millimeters, from the origin in the Y direction
-        /// \returns Distance, in millimeters, from the origin in the Y direction
-        PARAKEET_DEPRECATED(double getY() const);
-
         /// \brief Returns the distance, in millimeters, from the origin in the X direction
         /// \returns Distance, in millimeters, from the origin in the X direction
         double getX_mm() const;

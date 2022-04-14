@@ -4,9 +4,10 @@
 
 #include <parakeet/Pro/Driver.h>
 
-#include <parakeet/exceptions/NotConnectedToSensorException.h>
 #include <parakeet/exceptions/UnableToDetermineBaudRateException.h>
 #include <parakeet/exceptions/UnableToOpenPortException.h>
+
+#include <cstring>
 
 namespace mechaspin
 {
@@ -14,23 +15,10 @@ namespace parakeet
 {
 namespace Pro
 {
-    const int MAX_NUMBER_OF_POINTS_FROM_SENSOR = 1000;  // Arbitrary size
-    const int MESSAGE_DATA_BUFFER_SIZE = 8192;          // Arbitrary size
-
-    struct Driver::ScanData
-    {
-        unsigned short from;
-        unsigned short span;
-        unsigned short count;
-        unsigned short reserved;
-        unsigned short dist[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
-        unsigned char intensity[MAX_NUMBER_OF_POINTS_FROM_SENSOR];
-    };
-
     struct Driver::MessageData
     {
         int len;
-        unsigned char body[MESSAGE_DATA_BUFFER_SIZE];
+        unsigned char body[SERIAL_MESSAGE_DATA_BUFFER_SIZE];
     };
 
     const std::string CW_STOP_ROTATING = "LSTOPH";
@@ -70,12 +58,17 @@ namespace Pro
     {
         return SW_SET_BIAS_PREFIX + std::to_string(bias) + SW_SET_BIAS_POSTFIX;
     }
+    
+    Driver::Driver()
+    {
+        this->registerUpdateThreadCallback(std::bind(&Driver::serialUpdateThreadFunction, this));
+    }
 
     Driver::~Driver()
     {
         close();
     }
-    
+
     void Driver::connect(const SensorConfiguration& sensorConfiguration)
     {
         this->sensorConfiguration = sensorConfiguration;
@@ -86,22 +79,6 @@ namespace Pro
         }
 
         open();
-    }
-
-    bool Driver::connect(const std::string& comPort, BaudRate baudRate, bool intensity, ScanningFrequency scanningFrequency_Hz, bool dataSmoothing, bool dragPointRemoval)
-    {
-        SensorConfiguration paramConfiguration(comPort, baudRate, intensity, scanningFrequency_Hz, dataSmoothing, dragPointRemoval);
-        
-        try
-        {
-            connect(paramConfiguration);
-        }
-        catch (const std::runtime_error&)
-        {
-            return false;
-        }
-
-        return true;
     }
 
     void Driver::open()
@@ -147,12 +124,9 @@ namespace Pro
 
     void Driver::start()
     {
-        throwExceptionIfNotConnected();
+        serialPortDataBufferLength = 0;
 
-        runSerialInterfaceThread = true;
-        interfaceThreadStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
-        interfaceThreadFrameCount = 0;
-        serialInterfaceThread = std::thread([&] { this->serialInterfaceThreadFunction(); });
+        mechaspin::parakeet::Driver::start();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::START, CW_START_NORMALLY, std::chrono::milliseconds(1000));
 
@@ -166,36 +140,19 @@ namespace Pro
     {
         serialPort.write(CW_STOP_ROTATING);
 
-        runSerialInterfaceThread = false;
-
-        if(serialInterfaceThread.joinable())
-        {
-            serialInterfaceThread.join();
-        }
+        mechaspin::parakeet::Driver::stop();
     }
 
     void Driver::close()
     {
-        if (serialPort.isConnected() || runSerialInterfaceThread || serialInterfaceThread.joinable())
-        {
-           stop();
-        }
+        mechaspin::parakeet::Driver::close();
 
         serialPort.close();
     }
 
-    void Driver::registerScanCallback(std::function<void(const ScanDataPolar&)> callback)
-    {
-        scanCallbackFunction = callback;
-    }
-
     void Driver::enableDataSmoothing(bool enable)
     {
-        if (!serialPort.isConnected())
-        {
-            std::cout << "Cannot modify data smoothing until connected." << std::endl;
-            return;
-        }
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DATASMOOTHING, enable ? CW_ENABLE_DATA_SMOOTHING : CW_DISABLE_DATA_SMOOTHING, std::chrono::milliseconds(250));
 
@@ -204,7 +161,7 @@ namespace Pro
 
     void Driver::enableRemoveDragPoint(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::DRAGPOINTREMOVAL, enable ? CW_ENABLE_DRAG_POINT_REMOVAL : CW_DISABLE_DRAG_POINT_REMOVAL, std::chrono::milliseconds(250));
 
@@ -213,7 +170,7 @@ namespace Pro
 
     void Driver::enableIntensityData(bool enable)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::INTENSITY, enable ? SW_START_WITH_INTENSITY : SW_START_WITHOUT_INTENSITY, std::chrono::milliseconds(250));
 
@@ -222,7 +179,7 @@ namespace Pro
 
     void Driver::setScanningFrequency_Hz(ScanningFrequency Hz)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::SPEED, SW_SET_SPEED(Hz * 60), std::chrono::milliseconds(250));
 
@@ -236,13 +193,13 @@ namespace Pro
 
     void Driver::setBaudRate(BaudRate baudRate)
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::STOP, CW_STOP_ROTATING, std::chrono::milliseconds(200));
 
         sendMessageWaitForResponseOrTimeout(internal::SensorResponse::BAUDRATE, SW_SET_BAUD_RATE(baudRate.getValue()), std::chrono::milliseconds(0));
 
-        if(runSerialInterfaceThread)
+        if(isRunning())
         {
             stop();
 
@@ -260,76 +217,56 @@ namespace Pro
 
     bool Driver::isDataSmoothingEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dataSmoothing;
     }
 
     bool Driver::isDragPointRemovalEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.dragPointRemoval;
     }
 
     bool Driver::isIntensityDataEnabled()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.intensity;
     }
 
     Driver::ScanningFrequency Driver::getScanningFrequency_Hz()
     {
-        throwExceptionIfNotConnected();
+        assertIsConnected();
 
         return sensorConfiguration.scanningFrequency_Hz;
     }
 
-    double Driver::getScanRate_Hz()
+    void Driver::serialUpdateThreadFunction()
     {
-        std::chrono::milliseconds currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
-
-        auto ms = (currentTime - interfaceThreadStartTime).count();
-
-        if(ms == 0)
+        // modifying the baud rate of serial port can cause the connected state to be off for a brief moment
+        if (!serialPort.isConnected())
         {
-            return 0;
+            return;
         }
 
-        return interfaceThreadFrameCount / (ms / 1000.0);
-    }
+        int charsRead = serialPort.read(serialPortDataBuffer, serialPortDataBufferLength, SERIAL_MESSAGE_DATA_BUFFER_SIZE);
 
-    void Driver::serialInterfaceThreadFunction()
-    {
-        unsigned char* line = new unsigned char[MESSAGE_DATA_BUFFER_SIZE];
-        int len = 0;
-
-        while (runSerialInterfaceThread)
+        if (charsRead == 0)
         {
-            // modifying the baud rate of serial port can cause the connected state to be off for a brief moment
-            if (!serialPort.isConnected())
-            {
-                continue;
-            }
-
-            int charsRead = serialPort.read(line, len, MESSAGE_DATA_BUFFER_SIZE);
-
-            if (charsRead == 0)
-            {
-                continue;
-            }
-
-            len += charsRead;
-
-            int nl = parseSensorDataFromBuffer(len, line);
-
-            for (int i = nl; i<len; i++)
-            {
-                line[i - nl] = line[i];
-            }
-            len -= nl;
+            return;
         }
+
+        serialPortDataBufferLength += charsRead;
+
+        unsigned int bytesParsed = parseSensorDataFromBuffer(serialPortDataBufferLength, serialPortDataBuffer);
+
+        for (unsigned int i = bytesParsed; i < serialPortDataBufferLength; i++)
+        {
+            serialPortDataBuffer[i - bytesParsed] = serialPortDataBuffer[i];
+        }
+        serialPortDataBufferLength -= bytesParsed;
     }
 
     void Driver::onMessageDataReceived(MessageData* message)
@@ -344,43 +281,6 @@ namespace Pro
         }
 
         delete message;
-    }
-
-    void Driver::onScanDataReceived(ScanData* scanData)
-    {
-        if(pointHoldingList.size() == 0)
-        {
-            timeOfFirstPoint = std::chrono::system_clock::now();
-        }
-
-        double startAngle_deg = scanData->from / 10.0;
-        double endAngle_deg = (static_cast<double>(scanData->from) + static_cast<double>(scanData->span)) / 10.0;
-        double anglePerPoint_deg = (endAngle_deg - startAngle_deg) / scanData->count;
-        double deviationFrom360_deg = 1;
-
-        //Create PointPolar for each data point
-        for(int i = 0; i < scanData->count; i++)
-        {
-            PointPolar pointPolar(scanData->dist[i], startAngle_deg + (anglePerPoint_deg * i), scanData->intensity[i]);
-
-            pointHoldingList.push_back(pointPolar);
-        }
-
-        if(endAngle_deg + deviationFrom360_deg >= 360)
-        {
-            interfaceThreadFrameCount++;
-
-            ScanDataPolar scanDataPolar(pointHoldingList, timeOfFirstPoint);
-
-            if (scanCallbackFunction != nullptr)
-            {
-                scanCallbackFunction(scanDataPolar);
-            }
-
-            pointHoldingList.clear();
-        }
-
-        delete scanData;
     }
 
     int Driver::parseSensorDataFromBuffer(int length, unsigned char* buf)
@@ -431,13 +331,13 @@ namespace Pro
                     break;
                 }
 
-                ScanData* data = new ScanData;
-                data->from = start;
-                data->span = 360;
-                data->count = cnt;
+                ScanData data;
+                data.startAngle_deg = start / 10.0;
+                data.endAngle_deg = data.startAngle_deg + 36;
+
+                data.count = cnt;
 
                 unsigned short sum = start + cnt;
-
                 unsigned char* pdata = buf + idx + 6;
                 for (int i = 0; i < cnt; i++)
                 {
@@ -450,13 +350,13 @@ namespace Pro
 
                     if (sensorConfiguration.intensity)
                     {
-                        data->dist[i] = val & 0x1FFF;
-                        data->intensity[i] = val >> 13;
+                        data.dist_mm[i] = val & 0x1FFF;
+                        data.intensity[i] = val >> 13;
                     }
                     else
                     {
-                        data->dist[i] = val;
-                        data->intensity[i] = 0;
+                        data.dist_mm[i] = val;
+                        data.intensity[i] = 0;
                     }
                 }
 
@@ -470,7 +370,6 @@ namespace Pro
                 else if(!isAutoConnecting)
                 {
                     printf("Checksum check failed\n");
-                    delete data;
                 }
 
                 idx += 8 + cnt * 2;
@@ -483,16 +382,17 @@ namespace Pro
                     break;
                 }
 
-                ScanData* data = new ScanData;
-                data->from = start;
-                data->span = 360;
-                data->count = cnt;
-                unsigned short sum = start + cnt;
+                ScanData data;
+                data.startAngle_deg = start / 10.0;
+                data.endAngle_deg = data.startAngle_deg + 36;
 
+                data.count = cnt;
+
+                unsigned short sum = start + cnt;
                 unsigned char* pdata = buf + idx + 6;
                 for (int i = 0; i < cnt; i++)
                 {
-                    data->intensity[i] = pdata[i * 3];
+                    data.intensity[i] = pdata[i * 3];
 
                     sum += pdata[i * 3];
 
@@ -503,7 +403,7 @@ namespace Pro
 
                     sum += val;
 
-                    data->dist[i] = val;
+                    data.dist_mm[i] = val;
                 }
 
                 idx += 8 + cnt * 3;
@@ -517,7 +417,6 @@ namespace Pro
                 else if(!isAutoConnecting)
                 {
                     printf("Checksum check failed\n");
-                    delete data;
                 }
             }
 
@@ -563,12 +462,9 @@ namespace Pro
         return sensorReturnMessageState[messageType];
     }
 
-    void Driver::throwExceptionIfNotConnected()
+    bool Driver::isConnected()
     {
-        if(!serialPort.isConnected())
-        {
-            throw exceptions::NotConnectedToSensorException();
-        }
+        return serialPort.isConnected();
     }
 }
 }
